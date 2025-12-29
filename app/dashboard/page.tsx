@@ -10,7 +10,7 @@ import QuickKeyButton from '@/components/QuickKeyButton';
 import PlaceMarker from '@/components/PlaceMarker';
 import PlanCard from '@/components/PlanCard';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
-import { Sparkles, Home, Loader2 } from 'lucide-react';
+import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
 
 export default function Dashboard() {
   // Geolocation state
@@ -35,6 +35,9 @@ export default function Dashboard() {
 
   // Selected plan state
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Panel expansion state
+  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -249,34 +252,66 @@ export default function Dashboard() {
 
       {/* Plan Results */}
       <AnimatePresence>
-        {plans.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, x: -300 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -300 }}
-            className="absolute left-4 top-24 z-20 w-full max-w-lg"
-          >
-            <div className="max-h-[calc(100vh-200px)] space-y-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">
-                  {plans.length} Plan{plans.length !== 1 ? 's' : ''} Available
-                </h3>
-                <span className="text-xs text-gray-500">
-                  {selectedPlan ? '1 selected' : 'Choose one'}
-                </span>
-              </div>
+        {plans.length > 0 && isPanelExpanded && (
+          <>
+            {/* Click outside overlay */}
+            <div
+              className="absolute inset-0 z-[15]"
+              onClick={() => setIsPanelExpanded(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, x: -300 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -300 }}
+              className="absolute left-4 top-4 bottom-28 z-20 w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-full space-y-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {plans.length} Plan{plans.length !== 1 ? 's' : ''} Available
+                  </h3>
+                  <button
+                    onClick={() => setIsPanelExpanded(false)}
+                    className="rounded-full p-1 hover:bg-gray-200 transition-colors"
+                  >
+                    <X className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
 
-              {plans.map((plan, index) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  index={index}
-                  onSelect={() => handlePlanSelect(plan.id)}
-                  isSelected={selectedPlan === plan.id}
-                />
-              ))}
+                {plans.map((plan, index) => {
+                  const colorSchemes: Array<'orange' | 'purple' | 'green' | 'blue' | 'pink'> = ['orange', 'purple', 'green', 'blue', 'pink'];
+                  return (
+                    <PlanCard
+                      key={plan.id}
+                      plan={plan}
+                      index={index}
+                      onSelect={() => handlePlanSelect(plan.id)}
+                      isSelected={selectedPlan === plan.id}
+                      colorScheme={colorSchemes[index % colorSchemes.length]}
+                    />
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {/* Collapsed button when plans exist but panel is closed */}
+        {plans.length > 0 && !isPanelExpanded && (
+          <motion.button
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            onClick={() => setIsPanelExpanded(true)}
+            className="absolute left-4 top-1/2 z-20 -translate-y-1/2 flex items-center gap-2 rounded-r-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-3 text-white shadow-xl hover:shadow-2xl transition-all"
+          >
+            <ChevronRight className="h-5 w-5" />
+            <div className="text-left">
+              <div className="text-sm font-bold">{plans.length} Plans</div>
+              <div className="text-xs opacity-90">View options</div>
             </div>
-          </motion.div>
+          </motion.button>
         )}
       </AnimatePresence>
 
