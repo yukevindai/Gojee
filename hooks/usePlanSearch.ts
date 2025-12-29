@@ -50,12 +50,24 @@ export function usePlanSearch() {
         location: new google.maps.LatLng(location.lat, location.lng),
         radius: 2000, // 2km radius
         type: diningTypes[0] || 'restaurant',
+        keyword: 'restaurant food dining',
       };
 
       const diningPlaces = await new Promise<Place[]>((resolve, reject) => {
         service.nearbySearch(diningRequest, (results, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            resolve(mapPlaceResults(results.slice(0, 10)));
+            // Filter to only include actual restaurants/food establishments
+            const validFoodTypes = [
+              'restaurant', 'cafe', 'bar', 'food', 'bakery',
+              'meal_takeaway', 'meal_delivery', 'fast_food'
+            ];
+
+            const filteredResults = results.filter((result) => {
+              const types = result.types || [];
+              return types.some(type => validFoodTypes.includes(type));
+            });
+
+            resolve(mapPlaceResults(filteredResults.slice(0, 10)));
           } else {
             reject(new Error(`Dining search failed: ${status}`));
           }

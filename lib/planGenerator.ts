@@ -59,17 +59,45 @@ function getDiningDuration(partySize: string): number {
   return 60; // Couples/small groups
 }
 
-function getPlanName(dining: Place, hangout: Place): string {
-  const diningType = dining.types?.includes('restaurant') ? 'Dinner' : 'Food';
-  const hangoutName = hangout.types?.includes('park')
-    ? 'Park Stroll'
-    : hangout.types?.includes('movie_theater')
-    ? 'Movie'
-    : hangout.types?.includes('amusement_park')
-    ? 'Arcade Fun'
-    : 'Hangout';
+function getPlanName(dining: Place, hangout: Place, index: number): string {
+  // Determine dining type based on place types
+  let diningType = 'Dining';
+  if (dining.types?.includes('cafe') || dining.types?.includes('bakery')) {
+    diningType = 'Cafe';
+  } else if (dining.types?.includes('bar')) {
+    diningType = 'Drinks';
+  } else if (dining.types?.includes('fast_food')) {
+    diningType = 'Quick Bite';
+  } else if (dining.types?.includes('restaurant')) {
+    diningType = 'Meal';
+  }
 
-  return `${diningType} & ${hangoutName}`;
+  // Determine hangout activity based on place types
+  let hangoutActivity = 'Activity';
+  if (hangout.types?.includes('park')) {
+    hangoutActivity = 'Park Visit';
+  } else if (hangout.types?.includes('movie_theater')) {
+    hangoutActivity = 'Movie';
+  } else if (hangout.types?.includes('amusement_park') || hangout.types?.includes('bowling_alley')) {
+    hangoutActivity = 'Fun & Games';
+  } else if (hangout.types?.includes('museum') || hangout.types?.includes('art_gallery')) {
+    hangoutActivity = 'Culture';
+  } else if (hangout.types?.includes('bar')) {
+    hangoutActivity = 'Drinks';
+  }
+
+  // Create unique name using short versions of place names
+  const diningShort = dining.name.split(' ').slice(0, 2).join(' ');
+  const hangoutShort = hangout.name.split(' ').slice(0, 2).join(' ');
+
+  // Alternate between different name patterns for variety
+  const patterns = [
+    `${diningType} at ${diningShort}`,
+    `${hangoutActivity} & ${diningType}`,
+    `${diningShort} + ${hangoutActivity}`,
+  ];
+
+  return patterns[index % patterns.length];
 }
 
 function getPlanDescription(dining: Place, hangout: Place, vibe: string): string {
@@ -96,6 +124,7 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
   const topHangout = hangoutPlaces.slice(0, 3);
 
   // Generate combinations
+  let planIndex = 0;
   for (const dining of topDining) {
     for (const hangout of topHangout) {
       // Check proximity - venues should be within 3km
@@ -118,7 +147,7 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
 
       const plan: Plan = {
         id: `${dining.id}-${hangout.id}`,
-        name: getPlanName(dining, hangout),
+        name: getPlanName(dining, hangout, planIndex),
         description: getPlanDescription(dining, hangout, vibe),
         steps: [
           {
@@ -138,6 +167,7 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       };
 
       plans.push(plan);
+      planIndex++;
     }
   }
 

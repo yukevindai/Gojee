@@ -263,7 +263,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, x: -300 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -300 }}
-              className="absolute left-4 top-4 bottom-28 z-20 w-full max-w-lg"
+              className="absolute left-4 top-4 bottom-20 z-20 w-full max-w-lg"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="h-full space-y-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
