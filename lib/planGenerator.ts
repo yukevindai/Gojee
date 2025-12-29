@@ -14,6 +14,8 @@ export interface Plan {
   totalDuration: number; // in minutes
   estimatedCost: number; // 1-4 ($-$$$$)
   vibe: string; // casual, romantic, adventurous, etc.
+  distance: number; // distance between venues in meters
+  distanceCategory: 'walking' | 'bussing' | 'driving';
 }
 
 export interface GeneratePlansOptions {
@@ -37,6 +39,12 @@ function calculateDistance(place1: Place, place2: Place): number {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
+}
+
+function categorizeDistance(distance: number): 'walking' | 'bussing' | 'driving' {
+  if (distance <= 1000) return 'walking'; // 0-1km
+  if (distance <= 5000) return 'bussing'; // 1-5km
+  return 'driving'; // 5km+
 }
 
 function getHangoutDuration(hangoutType: string): number {
@@ -127,10 +135,11 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
   let planIndex = 0;
   for (const dining of topDining) {
     for (const hangout of topHangout) {
-      // Check proximity - venues should be within 3km
+      // Check proximity - venues should be within 10km
       const distance = calculateDistance(dining, hangout);
-      if (distance > 3000) continue; // Skip if too far
+      if (distance > 10000) continue; // Skip if too far (>10km)
 
+      const distanceCategory = categorizeDistance(distance);
       const diningDuration = getDiningDuration(partySize);
       const hangoutDuration = getHangoutDuration(
         hangout.types?.[0] || 'entertainment'
@@ -144,6 +153,12 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       const avgCost = Math.round(
         ((dining.priceLevel || 2) + (hangout.priceLevel || 2)) / 2
       );
+
+      // Add travel time based on distance category
+      let travelTime = 15; // Default 15 min
+      if (distanceCategory === 'driving') travelTime = 20;
+      else if (distanceCategory === 'bussing') travelTime = 15;
+      else if (distanceCategory === 'walking') travelTime = 10;
 
       const plan: Plan = {
         id: `${dining.id}-${hangout.id}`,
@@ -161,9 +176,11 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
             duration: hangoutDuration,
           },
         ],
-        totalDuration: diningDuration + hangoutDuration + 15, // +15 min for travel
+        totalDuration: diningDuration + hangoutDuration + travelTime,
         estimatedCost: avgCost,
         vibe,
+        distance,
+        distanceCategory,
       };
 
       plans.push(plan);

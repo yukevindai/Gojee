@@ -1,15 +1,16 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Star, Clock, DollarSign, MapPin, ArrowRight, Utensils, PartyPopper } from 'lucide-react';
+import { Star, Clock, DollarSign, MapPin, ArrowRight, Utensils, PartyPopper, Footprints, Bus, Car } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
+import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
 
 interface PlanCardProps {
   plan: Plan;
   index: number;
   onSelect: () => void;
   isSelected?: boolean;
-  colorScheme?: 'orange' | 'purple' | 'green' | 'blue' | 'pink';
+  colorScheme?: ColorScheme;
 }
 
 export default function PlanCard({ plan, index, onSelect, isSelected = false, colorScheme = 'orange' }: PlanCardProps) {
@@ -25,58 +26,20 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
     return `${hours}h ${mins}m`;
   };
 
-  // Color scheme configurations
-  const colorSchemes = {
-    orange: {
-      border: 'border-orange-500',
-      bg: 'bg-orange-50',
-      badge: 'bg-orange-100 text-orange-700',
-      button: 'bg-orange-500 hover:bg-orange-600',
-      diningGradient: 'from-orange-50 to-red-50',
-      diningIcon: 'bg-orange-500',
-      hangoutGradient: 'from-amber-50 to-orange-50',
-      hangoutIcon: 'bg-amber-500',
-    },
-    purple: {
-      border: 'border-purple-500',
-      bg: 'bg-purple-50',
-      badge: 'bg-purple-100 text-purple-700',
-      button: 'bg-purple-500 hover:bg-purple-600',
-      diningGradient: 'from-purple-50 to-pink-50',
-      diningIcon: 'bg-purple-500',
-      hangoutGradient: 'from-violet-50 to-purple-50',
-      hangoutIcon: 'bg-violet-500',
-    },
-    green: {
-      border: 'border-green-500',
-      bg: 'bg-green-50',
-      badge: 'bg-green-100 text-green-700',
-      button: 'bg-green-500 hover:bg-green-600',
-      diningGradient: 'from-green-50 to-emerald-50',
-      diningIcon: 'bg-green-500',
-      hangoutGradient: 'from-teal-50 to-green-50',
-      hangoutIcon: 'bg-teal-500',
-    },
-    blue: {
-      border: 'border-blue-500',
-      bg: 'bg-blue-50',
-      badge: 'bg-blue-100 text-blue-700',
-      button: 'bg-blue-500 hover:bg-blue-600',
-      diningGradient: 'from-blue-50 to-cyan-50',
-      diningIcon: 'bg-blue-500',
-      hangoutGradient: 'from-sky-50 to-blue-50',
-      hangoutIcon: 'bg-sky-500',
-    },
-    pink: {
-      border: 'border-pink-500',
-      bg: 'bg-pink-50',
-      badge: 'bg-pink-100 text-pink-700',
-      button: 'bg-pink-500 hover:bg-pink-600',
-      diningGradient: 'from-pink-50 to-rose-50',
-      diningIcon: 'bg-pink-500',
-      hangoutGradient: 'from-fuchsia-50 to-pink-50',
-      hangoutIcon: 'bg-fuchsia-500',
-    },
+  const formatDistance = (meters: number) => {
+    if (meters < 1000) return `${Math.round(meters)}m`;
+    return `${(meters / 1000).toFixed(1)}km`;
+  };
+
+  const getDistanceIcon = (category: 'walking' | 'bussing' | 'driving') => {
+    switch (category) {
+      case 'walking':
+        return <Footprints className="h-3 w-3" />;
+      case 'bussing':
+        return <Bus className="h-3 w-3" />;
+      case 'driving':
+        return <Car className="h-3 w-3" />;
+    }
   };
 
   const colors = colorSchemes[colorScheme];
@@ -120,7 +83,11 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
             <DollarSign className="h-3 w-3" />
             <span>{getPriceSymbol(plan.estimatedCost)}</span>
           </div>
-          <div className={`rounded-full ${colors.badge}`}>
+          <div className="flex items-center gap-1">
+            {getDistanceIcon(plan.distanceCategory)}
+            <span className="capitalize">{plan.distanceCategory} · {formatDistance(plan.distance)}</span>
+          </div>
+          <div className={`rounded-full px-2 py-0.5 ${colors.badge}`}>
             {plan.vibe}
           </div>
         </div>
