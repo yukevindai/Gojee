@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { APIProvider, Map } from '@vis.gl/react-google-maps';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
+import Link from 'next/link';
 import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Home } from 'lucide-react';
 
 export default function Dashboard() {
   // Geolocation state
@@ -22,6 +23,9 @@ export default function Dashboard() {
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
+
+  // Success state
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -48,15 +52,49 @@ export default function Dashboard() {
     selectedQuickKey !== '';
 
   const handleQuickKeyClick = (key: string) => {
-    setSelectedQuickKey(selectedQuickKey === key ? '' : key);
+    const newKey = selectedQuickKey === key ? '' : key;
+    setSelectedQuickKey(newKey);
+
+    // Apply quickkey presets
+    if (newKey === 'dinner-chill') {
+      setPartySize('4');
+      setDining(['Dinner']);
+      setHangout('Chill');
+    } else if (newKey === 'quick-lunch') {
+      setPartySize('2');
+      setDining(['Quick bite', 'Lunch']);
+      setHangout('N/A');
+    } else if (newKey === 'date-night') {
+      setPartySize('2');
+      setDining(['Dinner']);
+      setHangout('Date');
+    } else {
+      // Clear filters when deselecting
+      setPartySize('');
+      setDining([]);
+      setHangout('');
+    }
   };
 
   const handleConfirm = () => {
     if (!hasSelection) return;
 
-    // Handle confirmation logic here
-    console.log('Filters:', { partySize, dining, hangout, selectedQuickKey });
-    // TODO: Add your GrassMax logic here
+    // Show success message
+    setShowSuccess(true);
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setShowSuccess(false);
+    }, 3000);
+
+    // Log the selected filters (in production, this would trigger a search/API call)
+    console.log('GrassMaxxing with filters:', {
+      partySize,
+      dining,
+      hangout,
+      selectedQuickKey,
+      location: userLocation
+    });
   };
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -80,6 +118,13 @@ export default function Dashboard() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">GrassMaxxing</h1>
+            <Link
+              href="/"
+              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+            >
+              <Home className="h-4 w-4" />
+              Home
+            </Link>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -165,6 +210,28 @@ export default function Dashboard() {
           </motion.button>
         </div>
       </div>
+
+      {/* Success Notification */}
+      {showSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2"
+        >
+          <div className="rounded-2xl bg-gradient-to-r from-green-500 to-blue-500 px-8 py-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-white">
+              <Sparkles className="h-6 w-6" />
+              <div>
+                <p className="font-bold">GrassMaxxing Activated! 🎉</p>
+                <p className="text-sm opacity-90">
+                  Finding the perfect spots for you...
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
