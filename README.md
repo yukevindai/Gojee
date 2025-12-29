@@ -78,9 +78,9 @@ To use the map functionality, you need a Google Maps API key:
 3. **Enable required APIs**
    - Go to "APIs & Services" > "Library"
    - Search for and enable the following APIs:
-     - **Maps JavaScript API**
-     - **Places API** (optional, for future features)
-     - **Geocoding API** (optional, for address lookups)
+     - **Maps JavaScript API** (REQUIRED - for displaying the map)
+     - **Places API** (REQUIRED - for searching restaurants and venues)
+     - **Geocoding API** (optional, for address lookups in future features)
 
 4. **Create API credentials**
    - Go to "APIs & Services" > "Credentials"
@@ -97,7 +97,9 @@ To use the map functionality, you need a Google Maps API key:
        - `*.vercel.app/*` (for Vercel deployments)
    - Under "API restrictions":
      - Select "Restrict key"
-     - Choose "Maps JavaScript API"
+     - Choose both:
+       - "Maps JavaScript API"
+       - "Places API"
    - Click "Save"
 
 6. **Add the API key to your project**
@@ -229,12 +231,23 @@ Make sure to add these environment variables in your Vercel project settings:
 ### Dashboard (`/dashboard`)
 
 - Full-screen Google Maps centered on user location
+- **Real-time Places Search**: Powered by Google Places API
+  - Searches for restaurants, cafes, and venues based on your filters
+  - Shows up to 10 results on the map with markers
+  - Displays place cards with ratings, price levels, and open status
 - **Top Filters**:
   - Party Size: Select group size (2-9+)
   - Dining: Multi-select meal types
   - Hangout: Choose atmosphere/vibe
-- **QuickKey Buttons**: One-tap presets for common scenarios
-- **Confirm Button**: Gradient animation when filters are active
+- **QuickKey Buttons**: One-tap presets that auto-fill all filters
+  - "Group dinner then chill" - Sets party size 4, Dinner, Chill vibe
+  - "Grab some quick lunch" - Sets party size 2, Quick bite + Lunch
+  - "Date night" - Sets party size 2, Dinner, Date atmosphere
+- **Confirm Button**:
+  - Disabled (gray) until filters are selected
+  - Activates with vibrant gradient when ready
+  - Triggers real-time search for nearby venues
+  - Shows loading spinner during search
 
 ## Browser Support
 
@@ -264,6 +277,17 @@ Make sure to add these environment variables in your Vercel project settings:
 - Ensure HTTPS is enabled (required for geolocation)
 - Check browser permissions for location access
 - Location API may not work on `localhost` without user permission
+
+### Places search not working
+
+1. Verify Places API is enabled in Google Cloud Console
+2. Check API key restrictions allow both Maps JavaScript API and Places API
+3. Open browser console and look for API errors
+4. Common error messages:
+   - "This API project is not authorized to use this API" → Enable Places API
+   - "API keys with referer restrictions cannot be used" → Update API key restrictions
+   - "You have exceeded your request quota" → Check usage limits in Google Cloud Console
+5. Test with a fresh page reload after enabling the API (can take a few minutes)
 
 ## Contributing
 

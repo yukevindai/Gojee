@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { APIProvider, Map } from '@vis.gl/react-google-maps';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import Link from 'next/link';
 import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
-import { Sparkles, Home } from 'lucide-react';
+import PlaceMarker from '@/components/PlaceMarker';
+import PlanCard from '@/components/PlanCard';
+import { usePlanSearch } from '@/hooks/usePlanSearch';
+import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
 
 export default function Dashboard() {
   // Geolocation state
@@ -26,6 +29,15 @@ export default function Dashboard() {
 
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Plan search
+  const { plans, isLoading, error, searchPlans } = usePlanSearch();
+
+  // Selected plan state
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Panel expansion state
+  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -76,7 +88,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!hasSelection) return;
 
     // Show success message
@@ -87,14 +99,21 @@ export default function Dashboard() {
       setShowSuccess(false);
     }, 3000);
 
-    // Log the selected filters (in production, this would trigger a search/API call)
-    console.log('GrassMaxxing with filters:', {
-      partySize,
-      dining,
-      hangout,
-      selectedQuickKey,
-      location: userLocation
-    });
+    // Search for plans
+    try {
+      await searchPlans({
+        partySize,
+        dining,
+        hangout,
+        location: userLocation,
+      });
+    } catch (err) {
+      console.error('Plan search failed:', err);
+    }
+  };
+
+  const handlePlanSelect = (planId: string) => {
+    setSelectedPlan(selectedPlan === planId ? null : planId);
   };
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -102,7 +121,7 @@ export default function Dashboard() {
   return (
     <div className="relative h-screen w-full overflow-hidden bg-gray-50">
       {/* Google Map - Full Screen */}
-      <APIProvider apiKey={apiKey}>
+      <APIProvider apiKey={apiKey} libraries={['places']}>
         <Map
           defaultZoom={14}
           center={userLocation}
@@ -110,7 +129,18 @@ export default function Dashboard() {
           gestureHandling="greedy"
           disableDefaultUI={false}
           className="h-full w-full"
-        />
+        >
+          {/* Place Markers - Show all places from all plans */}
+          {plans.flatMap((plan) =>
+            plan.steps.map((step) => (
+              <PlaceMarker
+                key={step.place.id}
+                place={step.place}
+                onClick={() => console.log('Selected place:', step.place.name)}
+              />
+            ))
+          )}
+        </Map>
       </APIProvider>
 
       {/* Top Filters Overlay */}
@@ -179,21 +209,30 @@ export default function Dashboard() {
           {/* Confirm Button */}
           <motion.button
             onClick={handleConfirm}
-            disabled={!hasSelection}
-            whileTap={hasSelection ? { scale: 0.98 } : {}}
+            disabled={!hasSelection || isLoading}
+            whileTap={hasSelection && !isLoading ? { scale: 0.98 } : {}}
             className={clsx(
               'relative w-full overflow-hidden rounded-2xl py-4 text-lg font-bold shadow-lg transition-all',
-              hasSelection
+              hasSelection && !isLoading
                 ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-600 text-white shadow-xl hover:shadow-2xl'
                 : 'cursor-not-allowed bg-gray-200 text-gray-400'
             )}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              {hasSelection && <Sparkles className="h-5 w-5" />}
-              Confirm & GrassMax
-              {hasSelection && <Sparkles className="h-5 w-5" />}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  {hasSelection && <Sparkles className="h-5 w-5" />}
+                  Confirm & GrassMax
+                  {hasSelection && <Sparkles className="h-5 w-5" />}
+                </>
+              )}
             </span>
-            {hasSelection && (
+            {hasSelection && !isLoading && (
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-green-600 via-blue-600 to-purple-700"
                 animate={{
@@ -211,6 +250,84 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Plan Results */}
+      <AnimatePresence>
+        {plans.length > 0 && isPanelExpanded && (
+          <>
+            {/* Click outside overlay */}
+            <div
+              className="absolute inset-0 z-[15]"
+              onClick={() => setIsPanelExpanded(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, x: -300 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -300 }}
+              className="absolute left-4 top-4 bottom-20 z-20 w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-full space-y-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {plans.length} Plan{plans.length !== 1 ? 's' : ''} Available
+                  </h3>
+                  <button
+                    onClick={() => setIsPanelExpanded(false)}
+                    className="rounded-full p-1 hover:bg-gray-200 transition-colors"
+                  >
+                    <X className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+
+                {plans.map((plan, index) => {
+                  const colorSchemes: Array<'orange' | 'purple' | 'green' | 'blue' | 'pink'> = ['orange', 'purple', 'green', 'blue', 'pink'];
+                  return (
+                    <PlanCard
+                      key={plan.id}
+                      plan={plan}
+                      index={index}
+                      onSelect={() => handlePlanSelect(plan.id)}
+                      isSelected={selectedPlan === plan.id}
+                      colorScheme={colorSchemes[index % colorSchemes.length]}
+                    />
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {/* Collapsed button when plans exist but panel is closed */}
+        {plans.length > 0 && !isPanelExpanded && (
+          <motion.button
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            onClick={() => setIsPanelExpanded(true)}
+            className="absolute left-4 top-1/2 z-20 -translate-y-1/2 flex items-center gap-2 rounded-r-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-3 text-white shadow-xl hover:shadow-2xl transition-all"
+          >
+            <ChevronRight className="h-5 w-5" />
+            <div className="text-left">
+              <div className="text-sm font-bold">{plans.length} Plans</div>
+              <div className="text-xs opacity-90">View options</div>
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute left-1/2 top-24 z-50 -translate-x-1/2"
+        >
+          <div className="rounded-2xl bg-red-500 px-6 py-3 shadow-xl">
+            <p className="text-sm font-medium text-white">{error}</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Success Notification */}
       {showSuccess && (
         <motion.div
@@ -225,7 +342,7 @@ export default function Dashboard() {
               <div>
                 <p className="font-bold">GrassMaxxing Activated! 🎉</p>
                 <p className="text-sm opacity-90">
-                  Finding the perfect spots for you...
+                  Creating the perfect plans for you...
                 </p>
               </div>
             </div>
