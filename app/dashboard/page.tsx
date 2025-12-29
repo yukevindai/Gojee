@@ -8,8 +8,8 @@ import Link from 'next/link';
 import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
 import PlaceMarker from '@/components/PlaceMarker';
-import PlaceCard from '@/components/PlaceCard';
-import { usePlacesSearch } from '@/hooks/usePlacesSearch';
+import PlanCard from '@/components/PlanCard';
+import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { Sparkles, Home, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -30,8 +30,11 @@ export default function Dashboard() {
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Places search
-  const { places, isLoading, error, searchPlaces } = usePlacesSearch();
+  // Plan search
+  const { plans, isLoading, error, searchPlans } = usePlanSearch();
+
+  // Selected plan state
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -93,17 +96,21 @@ export default function Dashboard() {
       setShowSuccess(false);
     }, 3000);
 
-    // Search for places
+    // Search for plans
     try {
-      await searchPlaces({
+      await searchPlans({
         partySize,
         dining,
         hangout,
         location: userLocation,
       });
     } catch (err) {
-      console.error('Search failed:', err);
+      console.error('Plan search failed:', err);
     }
+  };
+
+  const handlePlanSelect = (planId: string) => {
+    setSelectedPlan(selectedPlan === planId ? null : planId);
   };
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -120,14 +127,16 @@ export default function Dashboard() {
           disableDefaultUI={false}
           className="h-full w-full"
         >
-          {/* Place Markers */}
-          {places.map((place) => (
-            <PlaceMarker
-              key={place.id}
-              place={place}
-              onClick={() => console.log('Selected place:', place.name)}
-            />
-          ))}
+          {/* Place Markers - Show all places from all plans */}
+          {plans.flatMap((plan) =>
+            plan.steps.map((step) => (
+              <PlaceMarker
+                key={step.place.id}
+                place={step.place}
+                onClick={() => console.log('Selected place:', step.place.name)}
+              />
+            ))
+          )}
         </Map>
       </APIProvider>
 
@@ -238,28 +247,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Place Results */}
+      {/* Plan Results */}
       <AnimatePresence>
-        {places.length > 0 && (
+        {plans.length > 0 && (
           <motion.div
             initial={{ opacity: 0, x: -300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
-            className="absolute left-4 top-24 z-20 w-full max-w-md"
+            className="absolute left-4 top-24 z-20 w-full max-w-lg"
           >
             <div className="max-h-[calc(100vh-200px)] space-y-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900">
-                  Found {places.length} Places
+                  {plans.length} Plan{plans.length !== 1 ? 's' : ''} Available
                 </h3>
+                <span className="text-xs text-gray-500">
+                  {selectedPlan ? '1 selected' : 'Choose one'}
+                </span>
               </div>
 
-              {places.map((place, index) => (
-                <PlaceCard
-                  key={place.id}
-                  place={place}
+              {plans.map((plan, index) => (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
                   index={index}
-                  onClick={() => console.log('View place:', place.name)}
+                  onSelect={() => handlePlanSelect(plan.id)}
+                  isSelected={selectedPlan === plan.id}
                 />
               ))}
             </div>
@@ -294,7 +307,7 @@ export default function Dashboard() {
               <div>
                 <p className="font-bold">GrassMaxxing Activated! 🎉</p>
                 <p className="text-sm opacity-90">
-                  Finding the perfect spots for you...
+                  Creating the perfect plans for you...
                 </p>
               </div>
             </div>
