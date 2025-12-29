@@ -1,18 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import FilterDropdown from '@/components/FilterDropdown';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Filters, GrassMaxResponse } from '@/lib/types';
 
 export default function ExplorePage() {
+  const router = useRouter();
   const [partySize, setPartySize] = useState('');
   const [dining, setDining] = useState<string[]>([]);
   const [hangout, setHangout] = useState('');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const partySizeOptions = ['2', '3', '4', '5', '6', '7', '8', '9+'];
   const diningOptions = ['Breakfast', 'Lunch', 'Dinner', 'Quick Bite', 'Snack', 'Desert'];
   const hangoutOptions = ['Formal', 'Chill', 'Date', 'N/A'];
+
+  // Get user location on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback to a default location (e.g., San Francisco)
+          setUserLocation({ lat: 37.7749, lng: -122.4194 });
+        }
+      );
+    } else {
+      // Fallback location if geolocation not supported
+      setUserLocation({ lat: 37.7749, lng: -122.4194 });
+    }
+  }, []);
 
   const shortcuts = [
     {
@@ -52,15 +80,100 @@ export default function ExplorePage() {
 
   const hasAnySelection = partySize !== '' || dining.length > 0 || hangout !== '';
 
-  const handleConfirm = () => {
-    if (hasAnySelection) {
-      console.log('Confirm clicked:', { partySize, dining, hangout });
-      // TODO: Navigate to results or trigger search
+  const handleConfirm = async () => {
+    if (!hasAnySelection) return;
+
+    if (!userLocation) {
+      setError('Unable to get your location. Please enable location services.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const filters: Filters = {
+        partySize,
+        dining,
+        hangout,
+      };
+
+      const response = await fetch('/api/grassmax', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filters,
+          userLocation,
+        }),
+      });
+
+      const data: GrassMaxResponse = await response.json();
+
+      if (!data.success || !data.plan) {
+        throw new Error(data.error || 'Failed to create plan');
+      }
+
+      // Navigate to results page with plan data
+      const planParam = encodeURIComponent(JSON.stringify(data.plan));
+      router.push(`/results?plan=${planParam}`);
+    } catch (err) {
+      console.error('GrassMax error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setLoading(false);
     }
   };
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+          >
+            <div className="bg-white rounded-3xl p-8 text-center shadow-2xl">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="text-6xl mb-4"
+              >
+                🌱
+              </motion.div>
+              <p className="text-xl font-bold text-gray-900 mb-2">Finding your perfect plan...</p>
+              <p className="text-sm text-gray-600">This may take a few moments</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Alert */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-red-500 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3"
+          >
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-semibold">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="text-sm underline hover:no-underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Map Background - TODO: Replace with Google Maps */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-green-50 to-yellow-50">
         {/* Mock Map Grid */}
@@ -200,9 +313,9 @@ export default function ExplorePage() {
           {/* Confirm Button */}
           <motion.button
             onClick={handleConfirm}
-            disabled={!hasAnySelection}
+            disabled={!hasAnySelection || loading}
             className={`w-full py-5 rounded-2xl font-bold text-lg shadow-xl transition-all ${
-              hasAnySelection
+              hasAnySelection && !loading
                 ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white hover:shadow-2xl transform hover:scale-[1.02]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
@@ -222,7 +335,17 @@ export default function ExplorePage() {
               repeat: Infinity,
             }}
           >
-            {hasAnySelection ? (
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                Finding your plan...
+                <motion.span
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                >
+                  🌱
+                </motion.span>
+              </span>
+            ) : hasAnySelection ? (
               <span className="flex items-center justify-center gap-2">
                 ✨ Confirm & GrassMax
                 <motion.span
