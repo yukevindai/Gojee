@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { APIProvider, Map } from '@vis.gl/react-google-maps';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import Link from 'next/link';
 import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
-import { Sparkles, Home } from 'lucide-react';
+import PlaceMarker from '@/components/PlaceMarker';
+import PlaceCard from '@/components/PlaceCard';
+import { usePlacesSearch } from '@/hooks/usePlacesSearch';
+import { Sparkles, Home, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
   // Geolocation state
@@ -26,6 +29,9 @@ export default function Dashboard() {
 
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Places search
+  const { places, isLoading, error, searchPlaces } = usePlacesSearch();
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -76,7 +82,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!hasSelection) return;
 
     // Show success message
@@ -87,14 +93,17 @@ export default function Dashboard() {
       setShowSuccess(false);
     }, 3000);
 
-    // Log the selected filters (in production, this would trigger a search/API call)
-    console.log('GrassMaxxing with filters:', {
-      partySize,
-      dining,
-      hangout,
-      selectedQuickKey,
-      location: userLocation
-    });
+    // Search for places
+    try {
+      await searchPlaces({
+        partySize,
+        dining,
+        hangout,
+        location: userLocation,
+      });
+    } catch (err) {
+      console.error('Search failed:', err);
+    }
   };
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -102,7 +111,7 @@ export default function Dashboard() {
   return (
     <div className="relative h-screen w-full overflow-hidden bg-gray-50">
       {/* Google Map - Full Screen */}
-      <APIProvider apiKey={apiKey}>
+      <APIProvider apiKey={apiKey} libraries={['places']}>
         <Map
           defaultZoom={14}
           center={userLocation}
@@ -110,7 +119,16 @@ export default function Dashboard() {
           gestureHandling="greedy"
           disableDefaultUI={false}
           className="h-full w-full"
-        />
+        >
+          {/* Place Markers */}
+          {places.map((place) => (
+            <PlaceMarker
+              key={place.id}
+              place={place}
+              onClick={() => console.log('Selected place:', place.name)}
+            />
+          ))}
+        </Map>
       </APIProvider>
 
       {/* Top Filters Overlay */}
@@ -179,21 +197,30 @@ export default function Dashboard() {
           {/* Confirm Button */}
           <motion.button
             onClick={handleConfirm}
-            disabled={!hasSelection}
-            whileTap={hasSelection ? { scale: 0.98 } : {}}
+            disabled={!hasSelection || isLoading}
+            whileTap={hasSelection && !isLoading ? { scale: 0.98 } : {}}
             className={clsx(
               'relative w-full overflow-hidden rounded-2xl py-4 text-lg font-bold shadow-lg transition-all',
-              hasSelection
+              hasSelection && !isLoading
                 ? 'bg-gradient-to-r from-green-500 via-blue-500 to-purple-600 text-white shadow-xl hover:shadow-2xl'
                 : 'cursor-not-allowed bg-gray-200 text-gray-400'
             )}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              {hasSelection && <Sparkles className="h-5 w-5" />}
-              Confirm & GrassMax
-              {hasSelection && <Sparkles className="h-5 w-5" />}
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  {hasSelection && <Sparkles className="h-5 w-5" />}
+                  Confirm & GrassMax
+                  {hasSelection && <Sparkles className="h-5 w-5" />}
+                </>
+              )}
             </span>
-            {hasSelection && (
+            {hasSelection && !isLoading && (
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-green-600 via-blue-600 to-purple-700"
                 animate={{
@@ -210,6 +237,48 @@ export default function Dashboard() {
           </motion.button>
         </div>
       </div>
+
+      {/* Place Results */}
+      <AnimatePresence>
+        {places.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, x: -300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -300 }}
+            className="absolute left-4 top-24 z-20 w-full max-w-md"
+          >
+            <div className="max-h-[calc(100vh-200px)] space-y-3 overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-2xl backdrop-blur-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Found {places.length} Places
+                </h3>
+              </div>
+
+              {places.map((place, index) => (
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  index={index}
+                  onClick={() => console.log('View place:', place.name)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute left-1/2 top-24 z-50 -translate-x-1/2"
+        >
+          <div className="rounded-2xl bg-red-500 px-6 py-3 shadow-xl">
+            <p className="text-sm font-medium text-white">{error}</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Success Notification */}
       {showSuccess && (
