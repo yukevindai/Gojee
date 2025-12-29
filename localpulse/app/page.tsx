@@ -45,7 +45,7 @@ export default function Home() {
             {/* CTA Buttons */}
             <div className="space-y-4">
               <Link
-                href="/signup"
+                href="/explore"
                 className="inline-block w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
               >
                 Get Started
