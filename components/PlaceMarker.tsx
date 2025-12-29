@@ -6,9 +6,18 @@ import type { Place } from '@/lib/places';
 interface PlaceMarkerProps {
   place: Place;
   onClick: () => void;
+  backgroundColor?: string;
+  borderColor?: string;
+  glyphColor?: string;
 }
 
-export default function PlaceMarker({ place, onClick }: PlaceMarkerProps) {
+export default function PlaceMarker({
+  place,
+  onClick,
+  backgroundColor = '#3B82F6',
+  borderColor = '#1E40AF',
+  glyphColor = '#FFFFFF'
+}: PlaceMarkerProps) {
   return (
     <AdvancedMarker
       position={place.location}
@@ -16,9 +25,9 @@ export default function PlaceMarker({ place, onClick }: PlaceMarkerProps) {
       title={place.name}
     >
       <Pin
-        background="#3B82F6"
-        borderColor="#1E40AF"
-        glyphColor="#FFFFFF"
+        background={backgroundColor}
+        borderColor={borderColor}
+        glyphColor={glyphColor}
       />
     </AdvancedMarker>
   );

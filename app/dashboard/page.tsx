@@ -11,6 +11,7 @@ import PlaceMarker from '@/components/PlaceMarker';
 import PlanCard from '@/components/PlanCard';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
+import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 
 export default function Dashboard() {
   // Geolocation state
@@ -130,16 +131,39 @@ export default function Dashboard() {
           disableDefaultUI={false}
           className="h-full w-full"
         >
-          {/* Place Markers - Show all places from all plans */}
-          {plans.flatMap((plan) =>
-            plan.steps.map((step) => (
-              <PlaceMarker
-                key={step.place.id}
-                place={step.place}
-                onClick={() => console.log('Selected place:', step.place.name)}
-              />
-            ))
-          )}
+          {/* Place Markers - Conditional rendering based on selected plan */}
+          {selectedPlan === null
+            ? // Show all places from all plans with their respective colors
+              plans.flatMap((plan, planIndex) => {
+                const colorScheme = getColorSchemeForIndex(planIndex);
+                const colors = colorSchemes[colorScheme];
+                return plan.steps.map((step) => (
+                  <PlaceMarker
+                    key={`${plan.id}-${step.place.id}`}
+                    place={step.place}
+                    onClick={() => console.log('Selected place:', step.place.name)}
+                    backgroundColor={colors.pinColor}
+                    borderColor={colors.pinBorder}
+                  />
+                ));
+              })
+            : // Show only places from the selected plan
+              plans
+                .filter((plan) => plan.id === selectedPlan)
+                .flatMap((plan, planIndex) => {
+                  const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
+                  const colorScheme = getColorSchemeForIndex(actualIndex);
+                  const colors = colorSchemes[colorScheme];
+                  return plan.steps.map((step) => (
+                    <PlaceMarker
+                      key={`${plan.id}-${step.place.id}`}
+                      place={step.place}
+                      onClick={() => console.log('Selected place:', step.place.name)}
+                      backgroundColor={colors.pinColor}
+                      borderColor={colors.pinBorder}
+                    />
+                  ));
+                })}
         </Map>
       </APIProvider>
 
@@ -279,19 +303,16 @@ export default function Dashboard() {
                   </button>
                 </div>
 
-                {plans.map((plan, index) => {
-                  const colorSchemes: Array<'orange' | 'purple' | 'green' | 'blue' | 'pink'> = ['orange', 'purple', 'green', 'blue', 'pink'];
-                  return (
-                    <PlanCard
-                      key={plan.id}
-                      plan={plan}
-                      index={index}
-                      onSelect={() => handlePlanSelect(plan.id)}
-                      isSelected={selectedPlan === plan.id}
-                      colorScheme={colorSchemes[index % colorSchemes.length]}
-                    />
-                  );
-                })}
+                {plans.map((plan, index) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    index={index}
+                    onSelect={() => handlePlanSelect(plan.id)}
+                    isSelected={selectedPlan === plan.id}
+                    colorScheme={getColorSchemeForIndex(index)}
+                  />
+                ))}
               </div>
             </motion.div>
           </>
