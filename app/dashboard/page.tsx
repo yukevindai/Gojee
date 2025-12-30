@@ -75,14 +75,18 @@ export default function Dashboard() {
     setSelectedQuickKey(newKey);
 
     // Apply quickkey presets
-    if (newKey === 'dinner-chill') {
-      setPartySize('4');
-      setDining(['Dinner']);
-      setHangout('Chill');
-    } else if (newKey === 'quick-lunch') {
+    if (newKey === 'morning-plan') {
       setPartySize('2');
-      setDining(['Quick bite', 'Lunch']);
-      setHangout('N/A');
+      setDining(['Breakfast', 'Lunch']);
+      setHangout('Chill');
+    } else if (newKey === 'afternoon-plan') {
+      setPartySize('4');
+      setDining(['Lunch', 'Dinner']);
+      setHangout('Chill');
+    } else if (newKey === 'full-day-plan') {
+      setPartySize('4');
+      setDining(['Breakfast', 'Lunch', 'Dinner']);
+      setHangout('Chill');
     } else if (newKey === 'date-night') {
       setPartySize('2');
       setDining(['Dinner']);
@@ -147,7 +151,7 @@ export default function Dashboard() {
     const plan = plans.find(p => p.id === selectedPlan);
     if (!plan) return;
 
-    const totalSteps = plan.steps.length + (plan.sideQuest ? 1 : 0);
+    const totalSteps = plan.steps.length + (plan.sideQuests ? plan.sideQuests.length : 0);
 
     if (currentStepIndex < totalSteps - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
@@ -225,17 +229,19 @@ export default function Dashboard() {
                   )),
                 ];
 
-                // Add side quest marker if exists
-                if (plan.sideQuest) {
-                  markers.push(
-                    <PlaceMarker
-                      key={`${plan.id}-sidequest-${plan.sideQuest.place.id}`}
-                      place={plan.sideQuest.place}
-                      onClick={() => console.log('Side quest:', plan.sideQuest?.place.name)}
-                      backgroundColor="#F59E0B" // amber-500
-                      borderColor="#D97706" // amber-600
-                    />
-                  );
+                // Add side quest markers if they exist
+                if (plan.sideQuests && plan.sideQuests.length > 0) {
+                  plan.sideQuests.forEach((quest) => {
+                    markers.push(
+                      <PlaceMarker
+                        key={`${plan.id}-sidequest-${quest.place.id}`}
+                        place={quest.place}
+                        onClick={() => console.log('Side quest:', quest.place.name)}
+                        backgroundColor="#F59E0B" // amber-500
+                        borderColor="#D97706" // amber-600
+                      />
+                    );
+                  });
                 }
 
                 return markers;
@@ -260,17 +266,19 @@ export default function Dashboard() {
                     )),
                   ];
 
-                  // Add side quest marker if exists
-                  if (plan.sideQuest) {
-                    markers.push(
-                      <PlaceMarker
-                        key={`${plan.id}-sidequest-${plan.sideQuest.place.id}`}
-                        place={plan.sideQuest.place}
-                        onClick={() => console.log('Side quest:', plan.sideQuest?.place.name)}
-                        backgroundColor="#F59E0B" // amber-500
-                        borderColor="#D97706" // amber-600
-                      />
-                    );
+                  // Add side quest markers if they exist
+                  if (plan.sideQuests && plan.sideQuests.length > 0) {
+                    plan.sideQuests.forEach((quest) => {
+                      markers.push(
+                        <PlaceMarker
+                          key={`${plan.id}-sidequest-${quest.place.id}`}
+                          place={quest.place}
+                          onClick={() => console.log('Side quest:', quest.place.name)}
+                          backgroundColor="#F59E0B" // amber-500
+                          borderColor="#D97706" // amber-600
+                        />
+                      );
+                    });
                   }
 
                   return markers;
@@ -320,21 +328,27 @@ export default function Dashboard() {
       <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white to-transparent p-4 pt-8 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl space-y-4">
           {/* QuickKey Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 overflow-x-auto">
             <QuickKeyButton
-              label="Group dinner then chill"
-              icon="🍽️"
-              isSelected={selectedQuickKey === 'dinner-chill'}
-              onClick={() => handleQuickKeyClick('dinner-chill')}
+              label="Morning Plan"
+              icon="🌅"
+              isSelected={selectedQuickKey === 'morning-plan'}
+              onClick={() => handleQuickKeyClick('morning-plan')}
             />
             <QuickKeyButton
-              label="Grab some quick lunch"
-              icon="🥪"
-              isSelected={selectedQuickKey === 'quick-lunch'}
-              onClick={() => handleQuickKeyClick('quick-lunch')}
+              label="Afternoon Plan"
+              icon="☀️"
+              isSelected={selectedQuickKey === 'afternoon-plan'}
+              onClick={() => handleQuickKeyClick('afternoon-plan')}
             />
             <QuickKeyButton
-              label="Date night"
+              label="Full Day Plan"
+              icon="🌞"
+              isSelected={selectedQuickKey === 'full-day-plan'}
+              onClick={() => handleQuickKeyClick('full-day-plan')}
+            />
+            <QuickKeyButton
+              label="Date Night"
               icon="❤️"
               isSelected={selectedQuickKey === 'date-night'}
               onClick={() => handleQuickKeyClick('date-night')}
