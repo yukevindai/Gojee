@@ -92,9 +92,11 @@ export function usePlanSearch() {
         });
       });
 
-      // Search for coffee/bubble tea shops for side quests (for Date and Chill plans)
+      // Search for side quest locations (coffee, arcades, gyms, etc.) for all plans
       let coffeeShops: Place[] = [];
-      if (['Date', 'Chill'].includes(hangout)) {
+
+      if (hangout === 'Date') {
+        // For Date plans: only coffee/bubble tea (no intense activities)
         const coffeeRequest: google.maps.places.PlaceSearchRequest = {
           location: new google.maps.LatLng(location.lat, location.lng),
           radius: 2000, // 2km radius
@@ -102,16 +104,46 @@ export function usePlanSearch() {
           type: 'cafe',
         };
 
-        coffeeShops = await new Promise<Place[]>((resolve, reject) => {
+        coffeeShops = await new Promise<Place[]>((resolve) => {
           service.nearbySearch(coffeeRequest, (results, status) => {
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
               resolve(mapPlaceResults(results.slice(0, 10)));
             } else {
-              // Don't fail the entire search if coffee shops aren't found
               resolve([]);
             }
           });
         });
+      } else {
+        // For Chill, Formal, N/A plans: coffee + arcades + gyms + movie theaters
+        const sideQuestTypes = [
+          { keyword: 'coffee bubble tea boba', type: 'cafe' },
+          { keyword: 'arcade game', type: 'amusement_center' },
+          { keyword: 'gym fitness', type: 'gym' },
+          { keyword: 'movie cinema', type: 'movie_theater' },
+        ];
+
+        const sideQuestSearches = sideQuestTypes.map((quest) => {
+          const request: google.maps.places.PlaceSearchRequest = {
+            location: new google.maps.LatLng(location.lat, location.lng),
+            radius: 2000,
+            keyword: quest.keyword,
+            type: quest.type,
+          };
+
+          return new Promise<Place[]>((resolve) => {
+            service.nearbySearch(request, (results, status) => {
+              if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                resolve(mapPlaceResults(results.slice(0, 5)));
+              } else {
+                resolve([]);
+              }
+            });
+          });
+        });
+
+        // Combine all side quest results
+        const allSideQuests = await Promise.all(sideQuestSearches);
+        coffeeShops = allSideQuests.flat();
       }
 
       // Generate plans from the search results

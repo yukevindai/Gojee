@@ -133,9 +133,6 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
   const topDining = diningPlaces.slice(0, 3);
   const topHangout = hangoutPlaces.slice(0, 3);
 
-  // Check if this plan type should include side quests
-  const shouldIncludeSideQuest = ['Date', 'Chill'].includes(hangoutType);
-
   // Generate combinations
   let planIndex = 0;
   for (const dining of topDining) {
@@ -165,20 +162,22 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
-      // Find a nearby coffee/bubble tea shop for side quest if applicable
+      // Find a nearby side quest location (coffee, arcade, gym, etc.)
       let sideQuest: ActivityStep | undefined;
-      if (shouldIncludeSideQuest && coffeeShops && coffeeShops.length > 0) {
-        // Find coffee shop closest to the hangout location (within 1km)
-        const nearbyCoffeeShop = coffeeShops.find((shop) => {
+      if (coffeeShops && coffeeShops.length > 0) {
+        // Find side quest within 1.5km of either dining or hangout location
+        const nearbySideQuest = coffeeShops.find((shop) => {
+          const distanceToDining = calculateDistance(shop, dining);
           const distanceToHangout = calculateDistance(shop, hangout);
-          return distanceToHangout <= 1000; // Within 1km of hangout
+          // Within 1.5km of either location
+          return distanceToDining <= 1500 || distanceToHangout <= 1500;
         });
 
-        if (nearbyCoffeeShop) {
+        if (nearbySideQuest) {
           sideQuest = {
             type: 'hangout',
-            place: nearbyCoffeeShop,
-            duration: 20, // 20 min for coffee/bubble tea
+            place: nearbySideQuest,
+            duration: 20, // 20 min for side quest
           };
         }
       }
