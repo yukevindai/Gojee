@@ -41,10 +41,10 @@ export default function StepByStepMode({
 }: StepByStepModeProps) {
   const colors = colorSchemes[colorScheme];
 
-  // Include side quest as a step if it exists
+  // Include side quests as steps if they exist
   const allSteps: ActivityStep[] = [...plan.steps];
-  if (plan.sideQuest) {
-    allSteps.push(plan.sideQuest);
+  if (plan.sideQuests && plan.sideQuests.length > 0) {
+    allSteps.push(...plan.sideQuests);
   }
 
   const currentStep = allSteps[currentStepIndex];

@@ -137,14 +137,19 @@ export function usePlanSearch() {
       coffeeShops = allSideQuests.flat();
     }
 
+    // Determine plan type based on filters (for now, default to 'single')
+    // This will be properly set when the dashboard passes the plan type
+    const planType = 'single';
+
     // Generate plans from the search results
     return generatePlans({
       diningPlaces,
       hangoutPlaces,
       hangoutType: hangout,
       partySize,
-      coffeeShops,
-    });
+      sideQuestPlaces: coffeeShops,
+      planType,
+    } as any); // Temporary cast for backward compatibility
   };
 
   const searchPlans = useCallback(async (filters: SearchFilters) => {

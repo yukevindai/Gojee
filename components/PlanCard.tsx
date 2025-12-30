@@ -176,15 +176,15 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
           </div>
         </div>
 
-        {/* Side Quest (Optional) */}
-        {plan.sideQuest && (() => {
-          const sideQuestInfo = getSideQuestInfo(plan.sideQuest.place.types);
+        {/* Side Quests (Optional) */}
+        {plan.sideQuests && plan.sideQuests.length > 0 && plan.sideQuests.map((sideQuest, idx) => {
+          const sideQuestInfo = getSideQuestInfo(sideQuest.place.types);
           return (
-            <>
+            <div key={sideQuest.place.id}>
               {/* Arrow */}
               <div className="flex justify-center">
                 <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="font-medium">Optional Side Quest</span>
+                  <span className="font-medium">Optional Side Quest {plan.sideQuests!.length > 1 ? `${idx + 1}` : ''}</span>
                 </div>
               </div>
 
@@ -195,23 +195,23 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
                     {sideQuestInfo.icon}
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-gray-900">{plan.sideQuest.place.name}</div>
+                    <div className="font-semibold text-gray-900">{sideQuest.place.name}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
                       <MapPin className="h-3 w-3" />
-                      <span className="line-clamp-1">{plan.sideQuest.place.address}</span>
+                      <span className="line-clamp-1">{sideQuest.place.address}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-3 text-xs">
-                      {plan.sideQuest.place.rating && (
+                      {sideQuest.place.rating && (
                         <div className="flex items-center gap-1">
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                           <span className="font-medium text-gray-900">
-                            {plan.sideQuest.place.rating.toFixed(1)}
+                            {sideQuest.place.rating.toFixed(1)}
                           </span>
                         </div>
                       )}
                       <div className="flex items-center gap-1 text-gray-600">
                         <Clock className="h-3 w-3" />
-                        <span>{formatDuration(plan.sideQuest.duration)}</span>
+                        <span>{formatDuration(sideQuest.duration)}</span>
                       </div>
                     </div>
                     <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">
@@ -220,9 +220,9 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           );
-        })()}
+        })}
       </div>
 
       {/* Select Button */}

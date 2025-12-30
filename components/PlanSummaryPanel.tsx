@@ -99,8 +99,9 @@ export default function PlanSummaryPanel({
     }
 
     // Add side quest benefit
-    if (plan.sideQuest) {
-      reasons.push(`Bonus stop: ${plan.sideQuest.place.name}`);
+    if (plan.sideQuests && plan.sideQuests.length > 0) {
+      const questCount = plan.sideQuests.length;
+      reasons.push(`${questCount} bonus ${questCount === 1 ? 'stop' : 'stops'} included`);
     }
 
     return reasons.slice(0, 3);
@@ -173,23 +174,25 @@ export default function PlanSummaryPanel({
               </div>
             </div>
 
-            {/* Side Quest (optional) */}
-            {plan.sideQuest && (
+            {/* Side Quests (optional) */}
+            {plan.sideQuests && plan.sideQuests.length > 0 && (
               <>
                 <div className="ml-5 flex items-center gap-2 text-sm text-gray-500">
-                  <span className="italic">Optional stop</span>
+                  <span className="italic">Optional {plan.sideQuests.length > 1 ? 'stops' : 'stop'}</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white font-bold">
-                    3
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">{plan.sideQuest.place.name}</div>
-                    <div className="text-sm text-gray-600">
-                      Anytime · {formatDuration(plan.sideQuest.duration)}
+                {plan.sideQuests.map((quest, idx) => (
+                  <div key={quest.place.id} className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white font-bold">
+                      {plan.steps.length + idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">{quest.place.name}</div>
+                      <div className="text-sm text-gray-600">
+                        Anytime · {formatDuration(quest.duration)}
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </>
             )}
           </div>
