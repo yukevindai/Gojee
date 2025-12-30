@@ -169,8 +169,9 @@ function generateSinglePlans(params: {
   const usedHangoutIds = new Set<string>();
   const usedSideQuestIds = new Set<string>();
 
-  const topDining = diningPlaces.slice(0, 10);
-  const topHangout = hangoutPlaces.slice(0, 10);
+  // Increased from 10 to 20 to allow more combinations for Date Night
+  const topDining = diningPlaces.slice(0, 20);
+  const topHangout = hangoutPlaces.slice(0, 20);
 
   let planIndex = 0;
   for (const dining of topDining) {
@@ -239,7 +240,11 @@ function generateSinglePlans(params: {
       usedDiningIds.add(dining.id);
       usedHangoutIds.add(hangout.id);
       planIndex++;
+
+      // Stop once we have 5 plans
+      if (plans.length >= 5) break;
     }
+    if (plans.length >= 5) break;
   }
 
   plans.sort((a, b) => {
@@ -407,10 +412,11 @@ function generateFullDayPlans(params: {
   const plans: Plan[] = [];
   const usedIds = new Set<string>();
 
-  const topBreakfast = breakfastPlaces.slice(0, 8);
-  const topLunch = lunchPlaces.slice(0, 8);
-  const topDinner = dinnerPlaces.slice(0, 8);
-  const topHangout = hangoutPlaces.slice(0, 20); // Increased to allow more combinations
+  // Increased pool sizes for more combinations
+  const topBreakfast = breakfastPlaces.slice(0, 12);
+  const topLunch = lunchPlaces.slice(0, 12);
+  const topDinner = dinnerPlaces.slice(0, 12);
+  const topHangout = hangoutPlaces.slice(0, 30); // Increased significantly
 
   let planIndex = 0;
 
@@ -442,7 +448,7 @@ function generateFullDayPlans(params: {
               const dist5 = calculateDistance(hangout3, dinner);
               const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
 
-              if (totalDistance > 30000) continue; // Skip if total distance > 30km
+              if (totalDistance > 35000) continue; // Slightly increased from 30km to 35km
 
               const steps: ActivityStep[] = [
                 { type: 'dining', place: breakfast, duration: 45 },
