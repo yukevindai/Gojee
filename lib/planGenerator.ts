@@ -201,7 +201,8 @@ function generateSinglePlans(params: {
           if (usedSideQuestIds.has(shop.id)) return false;
           const distanceToDining = calculateDistance(shop, dining);
           const distanceToHangout = calculateDistance(shop, hangout);
-          return distanceToDining <= 1500 || distanceToHangout <= 1500;
+          // Increased to 2km for more flexibility in finding side quests
+          return distanceToDining <= 2000 || distanceToHangout <= 2000;
         }).slice(0, 3);
 
         nearbySideQuests.forEach(quest => {

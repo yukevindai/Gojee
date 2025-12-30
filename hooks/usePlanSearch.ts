@@ -186,17 +186,19 @@ export function usePlanSearch() {
 
     if (hangout === 'Date') {
       // For Date plans: only coffee/bubble tea (no intense activities)
+      // Search more extensively to ensure we have enough for 5 plans with 2+ each
       const coffeeRequest: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(location.lat, location.lng),
         radius,
-        keyword: 'coffee bubble tea boba',
+        keyword: 'coffee bubble tea boba cafe dessert bakery',
         type: 'cafe',
       };
 
       coffeeShops = await new Promise<Place[]>((resolve) => {
         service.nearbySearch(coffeeRequest, (results, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            resolve(mapPlaceResults(results.slice(0, 10)));
+            // Get more results for Date Night - need enough for 5 plans with 2+ each
+            resolve(mapPlaceResults(results.slice(0, 30)));
           } else {
             resolve([]);
           }
