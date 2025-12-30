@@ -130,6 +130,7 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
   const plans: Plan[] = [];
   const usedDiningIds = new Set<string>(); // Track used dining locations
   const usedHangoutIds = new Set<string>(); // Track used hangout locations
+  const usedSideQuestIds = new Set<string>(); // Track used side quest locations
 
   // Limit to top 10 dining and 10 hangout places for combinations
   const topDining = diningPlaces.slice(0, 10);
@@ -173,7 +174,11 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       let sideQuest: ActivityStep | undefined;
       if (coffeeShops && coffeeShops.length > 0) {
         // Find side quest within 1.5km of either dining or hangout location
+        // that hasn't been used yet
         const nearbySideQuest = coffeeShops.find((shop) => {
+          // Skip if this side quest has already been used
+          if (usedSideQuestIds.has(shop.id)) return false;
+
           const distanceToDining = calculateDistance(shop, dining);
           const distanceToHangout = calculateDistance(shop, hangout);
           // Within 1.5km of either location
@@ -186,6 +191,8 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
             place: nearbySideQuest,
             duration: 20, // 20 min for side quest
           };
+          // Mark this side quest as used
+          usedSideQuestIds.add(nearbySideQuest.id);
         }
       }
 
