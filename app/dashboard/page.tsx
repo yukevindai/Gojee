@@ -137,24 +137,9 @@ export default function Dashboard() {
               plans.flatMap((plan, planIndex) => {
                 const colorScheme = getColorSchemeForIndex(planIndex);
                 const colors = colorSchemes[colorScheme];
-                return plan.steps.map((step) => (
-                  <PlaceMarker
-                    key={`${plan.id}-${step.place.id}`}
-                    place={step.place}
-                    onClick={() => console.log('Selected place:', step.place.name)}
-                    backgroundColor={colors.pinColor}
-                    borderColor={colors.pinBorder}
-                  />
-                ));
-              })
-            : // Show only places from the selected plan
-              plans
-                .filter((plan) => plan.id === selectedPlan)
-                .flatMap((plan, planIndex) => {
-                  const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
-                  const colorScheme = getColorSchemeForIndex(actualIndex);
-                  const colors = colorSchemes[colorScheme];
-                  return plan.steps.map((step) => (
+                const markers = [
+                  // Main plan steps
+                  ...plan.steps.map((step) => (
                     <PlaceMarker
                       key={`${plan.id}-${step.place.id}`}
                       place={step.place}
@@ -162,7 +147,58 @@ export default function Dashboard() {
                       backgroundColor={colors.pinColor}
                       borderColor={colors.pinBorder}
                     />
-                  ));
+                  )),
+                ];
+
+                // Add side quest marker if exists
+                if (plan.sideQuest) {
+                  markers.push(
+                    <PlaceMarker
+                      key={`${plan.id}-sidequest-${plan.sideQuest.place.id}`}
+                      place={plan.sideQuest.place}
+                      onClick={() => console.log('Side quest:', plan.sideQuest?.place.name)}
+                      backgroundColor="#F59E0B" // amber-500
+                      borderColor="#D97706" // amber-600
+                    />
+                  );
+                }
+
+                return markers;
+              })
+            : // Show only places from the selected plan
+              plans
+                .filter((plan) => plan.id === selectedPlan)
+                .flatMap((plan) => {
+                  const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
+                  const colorScheme = getColorSchemeForIndex(actualIndex);
+                  const colors = colorSchemes[colorScheme];
+                  const markers = [
+                    // Main plan steps
+                    ...plan.steps.map((step) => (
+                      <PlaceMarker
+                        key={`${plan.id}-${step.place.id}`}
+                        place={step.place}
+                        onClick={() => console.log('Selected place:', step.place.name)}
+                        backgroundColor={colors.pinColor}
+                        borderColor={colors.pinBorder}
+                      />
+                    )),
+                  ];
+
+                  // Add side quest marker if exists
+                  if (plan.sideQuest) {
+                    markers.push(
+                      <PlaceMarker
+                        key={`${plan.id}-sidequest-${plan.sideQuest.place.id}`}
+                        place={plan.sideQuest.place}
+                        onClick={() => console.log('Side quest:', plan.sideQuest?.place.name)}
+                        backgroundColor="#F59E0B" // amber-500
+                        borderColor="#D97706" // amber-600
+                      />
+                    );
+                  }
+
+                  return markers;
                 })}
         </Map>
       </APIProvider>

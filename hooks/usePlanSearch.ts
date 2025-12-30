@@ -92,12 +92,35 @@ export function usePlanSearch() {
         });
       });
 
+      // Search for coffee/bubble tea shops for side quests (for Date and Chill plans)
+      let coffeeShops: Place[] = [];
+      if (['Date', 'Chill'].includes(hangout)) {
+        const coffeeRequest: google.maps.places.PlaceSearchRequest = {
+          location: new google.maps.LatLng(location.lat, location.lng),
+          radius: 2000, // 2km radius
+          keyword: 'coffee bubble tea boba',
+          type: 'cafe',
+        };
+
+        coffeeShops = await new Promise<Place[]>((resolve, reject) => {
+          service.nearbySearch(coffeeRequest, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              resolve(mapPlaceResults(results.slice(0, 10)));
+            } else {
+              // Don't fail the entire search if coffee shops aren't found
+              resolve([]);
+            }
+          });
+        });
+      }
+
       // Generate plans from the search results
       const generatedPlans = generatePlans({
         diningPlaces,
         hangoutPlaces,
         hangoutType: hangout,
         partySize,
+        coffeeShops,
       });
 
       if (generatedPlans.length === 0) {

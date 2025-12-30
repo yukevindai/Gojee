@@ -16,6 +16,7 @@ export interface Plan {
   vibe: string; // casual, romantic, adventurous, etc.
   distance: number; // distance between venues in meters
   distanceCategory: 'walking' | 'bussing' | 'driving';
+  sideQuest?: ActivityStep; // Optional side quest (e.g., bubble tea, coffee)
 }
 
 export interface GeneratePlansOptions {
@@ -23,6 +24,7 @@ export interface GeneratePlansOptions {
   hangoutPlaces: Place[];
   hangoutType: string; // 'Formal', 'Chill', 'Date', 'N/A'
   partySize: string;
+  coffeeShops?: Place[]; // Optional coffee/bubble tea shops for side quests
 }
 
 function calculateDistance(place1: Place, place2: Place): number {
@@ -42,8 +44,8 @@ function calculateDistance(place1: Place, place2: Place): number {
 }
 
 function categorizeDistance(distance: number): 'walking' | 'bussing' | 'driving' {
-  if (distance <= 1000) return 'walking'; // 0-1km
-  if (distance <= 5000) return 'bussing'; // 1-5km
+  if (distance <= 1500) return 'walking'; // 0-1.5km
+  if (distance <= 5000) return 'bussing'; // 1.5-5km
   return 'driving'; // 5km+
 }
 
@@ -124,12 +126,15 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 }
 
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
-  const { diningPlaces, hangoutPlaces, hangoutType, partySize } = options;
+  const { diningPlaces, hangoutPlaces, hangoutType, partySize, coffeeShops } = options;
   const plans: Plan[] = [];
 
   // Limit to top 3 dining and 3 hangout places for combinations
   const topDining = diningPlaces.slice(0, 3);
   const topHangout = hangoutPlaces.slice(0, 3);
+
+  // Check if this plan type should include side quests
+  const shouldIncludeSideQuest = ['Date', 'Chill'].includes(hangoutType);
 
   // Generate combinations
   let planIndex = 0;
@@ -160,6 +165,24 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
+      // Find a nearby coffee/bubble tea shop for side quest if applicable
+      let sideQuest: ActivityStep | undefined;
+      if (shouldIncludeSideQuest && coffeeShops && coffeeShops.length > 0) {
+        // Find coffee shop closest to the hangout location (within 1km)
+        const nearbyCoffeeShop = coffeeShops.find((shop) => {
+          const distanceToHangout = calculateDistance(shop, hangout);
+          return distanceToHangout <= 1000; // Within 1km of hangout
+        });
+
+        if (nearbyCoffeeShop) {
+          sideQuest = {
+            type: 'hangout',
+            place: nearbyCoffeeShop,
+            duration: 20, // 20 min for coffee/bubble tea
+          };
+        }
+      }
+
       const plan: Plan = {
         id: `${dining.id}-${hangout.id}`,
         name: getPlanName(dining, hangout, planIndex),
@@ -176,11 +199,12 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
             duration: hangoutDuration,
           },
         ],
-        totalDuration: diningDuration + hangoutDuration + travelTime,
+        totalDuration: diningDuration + hangoutDuration + travelTime + (sideQuest ? 25 : 0), // +25 for side quest (20min + 5min travel)
         estimatedCost: avgCost,
         vibe,
         distance,
         distanceCategory,
+        sideQuest,
       };
 
       plans.push(plan);
