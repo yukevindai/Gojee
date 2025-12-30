@@ -64,9 +64,6 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
 
   const colors = colorSchemes[colorScheme];
 
-  const diningStep = plan.steps[0];
-  const hangoutStep = plan.steps[1];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -113,68 +110,50 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
         </div>
       </div>
 
-      {/* Steps */}
+      {/* All Steps */}
       <div className="space-y-3">
-        {/* Step 1: Dining */}
-        <div className={`flex items-start gap-3 rounded-xl bg-gradient-to-r ${colors.diningGradient} p-3`}>
-          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colors.diningIcon} text-white`}>
-            <Utensils className="h-4 w-4" />
-          </div>
-          <div className="flex-1">
-            <div className="font-semibold text-gray-900">{diningStep.place.name}</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
-              <MapPin className="h-3 w-3" />
-              <span className="line-clamp-1">{diningStep.place.address}</span>
-            </div>
-            <div className="mt-1 flex items-center gap-3 text-xs">
-              {diningStep.place.rating && (
-                <div className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="font-medium text-gray-900">
-                    {diningStep.place.rating.toFixed(1)}
-                  </span>
+        {plan.steps.map((step, stepIndex) => (
+          <div key={`${step.place.id}-${stepIndex}`}>
+            {/* Step Card */}
+            <div className={`flex items-start gap-3 rounded-xl bg-gradient-to-r ${
+              step.type === 'dining' ? colors.diningGradient : colors.hangoutGradient
+            } p-3`}>
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                step.type === 'dining' ? colors.diningIcon : colors.hangoutIcon
+              } text-white`}>
+                {step.type === 'dining' ? <Utensils className="h-4 w-4" /> : <PartyPopper className="h-4 w-4" />}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-gray-900">{step.place.name}</div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+                  <MapPin className="h-3 w-3" />
+                  <span className="line-clamp-1">{step.place.address}</span>
                 </div>
-              )}
-              <div className="flex items-center gap-1 text-gray-600">
-                <Clock className="h-3 w-3" />
-                <span>{formatDuration(diningStep.duration)}</span>
+                <div className="mt-1 flex items-center gap-3 text-xs">
+                  {step.place.rating && (
+                    <div className="flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      <span className="font-medium text-gray-900">
+                        {step.place.rating.toFixed(1)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <Clock className="h-3 w-3" />
+                    <span>{formatDuration(step.duration)}</span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Arrow */}
-        <div className="flex justify-center">
-          <ArrowRight className="h-5 w-5 text-gray-400" />
-        </div>
-
-        {/* Step 2: Hangout */}
-        <div className={`flex items-start gap-3 rounded-xl bg-gradient-to-r ${colors.hangoutGradient} p-3`}>
-          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colors.hangoutIcon} text-white`}>
-            <PartyPopper className="h-4 w-4" />
-          </div>
-          <div className="flex-1">
-            <div className="font-semibold text-gray-900">{hangoutStep.place.name}</div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
-              <MapPin className="h-3 w-3" />
-              <span className="line-clamp-1">{hangoutStep.place.address}</span>
-            </div>
-            <div className="mt-1 flex items-center gap-3 text-xs">
-              {hangoutStep.place.rating && (
-                <div className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <span className="font-medium text-gray-900">
-                    {hangoutStep.place.rating.toFixed(1)}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 text-gray-600">
-                <Clock className="h-3 w-3" />
-                <span>{formatDuration(hangoutStep.duration)}</span>
+            {/* Arrow between steps (not after the last step) */}
+            {stepIndex < plan.steps.length - 1 && (
+              <div className="flex justify-center py-1">
+                <ArrowRight className="h-5 w-5 text-gray-400" />
               </div>
-            </div>
+            )}
           </div>
-        </div>
+        ))}
 
         {/* Side Quests (Optional) */}
         {plan.sideQuests && plan.sideQuests.length > 0 && plan.sideQuests.map((sideQuest, idx) => {

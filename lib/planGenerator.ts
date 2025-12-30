@@ -399,41 +399,45 @@ function generateFullDayPlans(params: {
   const topBreakfast = breakfastPlaces.slice(0, 5);
   const topLunch = lunchPlaces.slice(0, 5);
   const topDinner = dinnerPlaces.slice(0, 5);
-  const topHangout = hangoutPlaces.slice(0, 10);
+  const topHangout = hangoutPlaces.slice(0, 15);
 
   let planIndex = 0;
   for (const breakfast of topBreakfast) {
     for (const lunch of topLunch) {
       for (const dinner of topDinner) {
-        if (topHangout.length < 2) break;
+        if (topHangout.length < 3) break;
 
+        // Use three different hangout locations
         const hangout1 = topHangout[0];
         const hangout2 = topHangout[1];
+        const hangout3 = topHangout[2];
 
-        const allIds = [breakfast.id, hangout1.id, lunch.id, hangout2.id, dinner.id];
+        const allIds = [breakfast.id, hangout1.id, lunch.id, hangout2.id, hangout3.id, dinner.id];
         if (allIds.some(id => usedIds.has(id))) continue;
 
         const dist1 = calculateDistance(breakfast, hangout1);
         const dist2 = calculateDistance(hangout1, lunch);
         const dist3 = calculateDistance(lunch, hangout2);
-        const dist4 = calculateDistance(hangout2, dinner);
-        const totalDistance = dist1 + dist2 + dist3 + dist4;
-        if (totalDistance > 25000) continue;
+        const dist4 = calculateDistance(hangout2, hangout3);
+        const dist5 = calculateDistance(hangout3, dinner);
+        const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
+        if (totalDistance > 30000) continue; // Increased limit for 6 stops
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: breakfast, duration: 45 },
           { type: 'hangout', place: hangout1, duration: 60 },
           { type: 'dining', place: lunch, duration: 60 },
-          { type: 'hangout', place: hangout2, duration: 90 },
+          { type: 'hangout', place: hangout2, duration: 75 },
+          { type: 'hangout', place: hangout3, duration: 75 },
           { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
         ];
 
-        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, dinner], usedIds, 4);
+        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 4);
 
         const avgCost = Math.round(
-          ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (dinner.priceLevel || 2)) / 5
+          ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6
         );
-        const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 80 + (sideQuests.length * 25);
+        const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 100 + (sideQuests.length * 25);
 
         const plan: Plan = {
           id: `fullday-${planIndex}`,
@@ -444,7 +448,7 @@ function generateFullDayPlans(params: {
           estimatedCost: avgCost,
           vibe: getVibeFromHangout(hangout1.types?.[0] || 'park', hangoutType),
           distance: totalDistance,
-          distanceCategory: categorizeDistance(totalDistance / 4),
+          distanceCategory: categorizeDistance(totalDistance / 5),
           sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
         };
 

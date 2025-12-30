@@ -33,37 +33,114 @@ export function usePlanSearch() {
     filters: SearchFilters,
     radius: number
   ): Promise<Plan[]> => {
-    const { location, dining, hangout, partySize } = filters;
+    const { location, dining, hangout, partySize, planType: explicitPlanType } = filters;
 
-    // Search for dining places
-    const diningTypes = getPlaceType(dining);
-    const diningRequest: google.maps.places.PlaceSearchRequest = {
-      location: new google.maps.LatLng(location.lat, location.lng),
-      radius,
-      type: diningTypes[0] || 'restaurant',
-      keyword: 'restaurant food dining',
+    // Determine plan type from dining selection or explicit planType
+    let planType: 'morning' | 'afternoon' | 'fullday' | 'single' = explicitPlanType || 'single';
+
+    if (!explicitPlanType) {
+      const hasBreakfast = dining.includes('Breakfast');
+      const hasLunch = dining.includes('Lunch');
+      const hasDinner = dining.includes('Dinner');
+
+      if (hasBreakfast && hasLunch && hasDinner) {
+        planType = 'fullday';
+      } else if (hasBreakfast && hasLunch) {
+        planType = 'morning';
+      } else if (hasLunch && hasDinner) {
+        planType = 'afternoon';
+      } else {
+        planType = 'single';
+      }
+    }
+
+    // Helper function to search for specific meal type
+    const searchMealType = async (mealType: string): Promise<Place[]> => {
+      const types = getPlaceType([mealType]);
+      const keyword = mealType === 'Breakfast' ? 'breakfast brunch cafe' :
+                      mealType === 'Lunch' ? 'lunch restaurant' :
+                      'dinner restaurant';
+
+      const request: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(location.lat, location.lng),
+        radius,
+        type: types[0] || 'restaurant',
+        keyword,
+      };
+
+      return new Promise<Place[]>((resolve, reject) => {
+        service.nearbySearch(request, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            const validFoodTypes = [
+              'restaurant', 'cafe', 'bar', 'food', 'bakery',
+              'meal_takeaway', 'meal_delivery', 'fast_food'
+            ];
+
+            const filteredResults = results.filter((result) => {
+              const types = result.types || [];
+              return types.some(type => validFoodTypes.includes(type));
+            });
+
+            resolve(mapPlaceResults(filteredResults.slice(0, 20)));
+          } else {
+            reject(new Error(`${mealType} search failed: ${status}`));
+          }
+        });
+      });
     };
 
-    const diningPlaces = await new Promise<Place[]>((resolve, reject) => {
-      service.nearbySearch(diningRequest, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          // Filter to only include actual restaurants/food establishments
-          const validFoodTypes = [
-            'restaurant', 'cafe', 'bar', 'food', 'bakery',
-            'meal_takeaway', 'meal_delivery', 'fast_food'
-          ];
+    // Search for meal places based on plan type
+    let breakfastPlaces: Place[] = [];
+    let lunchPlaces: Place[] = [];
+    let dinnerPlaces: Place[] = [];
+    let diningPlaces: Place[] = []; // For backward compatibility with single plans
 
-          const filteredResults = results.filter((result) => {
-            const types = result.types || [];
-            return types.some(type => validFoodTypes.includes(type));
-          });
+    if (planType === 'morning') {
+      [breakfastPlaces, lunchPlaces] = await Promise.all([
+        searchMealType('Breakfast'),
+        searchMealType('Lunch'),
+      ]);
+    } else if (planType === 'afternoon') {
+      [lunchPlaces, dinnerPlaces] = await Promise.all([
+        searchMealType('Lunch'),
+        searchMealType('Dinner'),
+      ]);
+    } else if (planType === 'fullday') {
+      [breakfastPlaces, lunchPlaces, dinnerPlaces] = await Promise.all([
+        searchMealType('Breakfast'),
+        searchMealType('Lunch'),
+        searchMealType('Dinner'),
+      ]);
+    } else {
+      // Single plan - use original logic
+      const diningTypes = getPlaceType(dining);
+      const diningRequest: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(location.lat, location.lng),
+        radius,
+        type: diningTypes[0] || 'restaurant',
+        keyword: 'restaurant food dining',
+      };
 
-          resolve(mapPlaceResults(filteredResults.slice(0, 20)));
-        } else {
-          reject(new Error(`Dining search failed: ${status}`));
-        }
+      diningPlaces = await new Promise<Place[]>((resolve, reject) => {
+        service.nearbySearch(diningRequest, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            const validFoodTypes = [
+              'restaurant', 'cafe', 'bar', 'food', 'bakery',
+              'meal_takeaway', 'meal_delivery', 'fast_food'
+            ];
+
+            const filteredResults = results.filter((result) => {
+              const types = result.types || [];
+              return types.some(type => validFoodTypes.includes(type));
+            });
+
+            resolve(mapPlaceResults(filteredResults.slice(0, 20)));
+          } else {
+            reject(new Error(`Dining search failed: ${status}`));
+          }
+        });
       });
-    });
+    }
 
     // Search for hangout places
     const hangoutTypes = getHangoutPlaceTypes(hangout);
@@ -137,19 +214,18 @@ export function usePlanSearch() {
       coffeeShops = allSideQuests.flat();
     }
 
-    // Determine plan type based on filters (for now, default to 'single')
-    // This will be properly set when the dashboard passes the plan type
-    const planType = 'single';
-
     // Generate plans from the search results
     return generatePlans({
-      diningPlaces,
+      breakfastPlaces,
+      lunchPlaces,
+      dinnerPlaces,
+      diningPlaces, // For backward compatibility
       hangoutPlaces,
       hangoutType: hangout,
       partySize,
       sideQuestPlaces: coffeeShops,
       planType,
-    } as any); // Temporary cast for backward compatibility
+    } as any); // Cast for compatibility with old interface
   };
 
   const searchPlans = useCallback(async (filters: SearchFilters) => {

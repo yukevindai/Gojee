@@ -22,6 +22,7 @@ export interface SearchFilters {
     lat: number;
     lng: number;
   };
+  planType?: 'morning' | 'afternoon' | 'fullday' | 'single';
 }
 
 export function getPlaceType(diningOptions: string[]): string[] {
