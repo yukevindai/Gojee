@@ -58,7 +58,7 @@ export function usePlanSearch() {
             return types.some(type => validFoodTypes.includes(type));
           });
 
-          resolve(mapPlaceResults(filteredResults.slice(0, 10)));
+          resolve(mapPlaceResults(filteredResults.slice(0, 20)));
         } else {
           reject(new Error(`Dining search failed: ${status}`));
         }
@@ -76,7 +76,7 @@ export function usePlanSearch() {
     const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
       service.nearbySearch(hangoutRequest, (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          resolve(mapPlaceResults(results.slice(0, 10)));
+          resolve(mapPlaceResults(results.slice(0, 20)));
         } else {
           reject(new Error(`Hangout search failed: ${status}`));
         }
@@ -162,20 +162,22 @@ export function usePlanSearch() {
       const map = new google.maps.Map(mapDiv);
       const service = new google.maps.places.PlacesService(map);
 
-      // Try progressively larger radii until we get at least 5 unique plans
-      const radii = [2000, 3000, 5000, 7000]; // 2km, 3km, 5km, 7km
+      // Try progressively larger radii (1km increments) until we get at least 5 unique plans
+      const maxRadius = 10000; // Maximum 10km
       let generatedPlans: Plan[] = [];
+      let currentRadius = 2000; // Start at 2km
 
-      for (const radius of radii) {
-        generatedPlans = await performSearch(service, filters, radius);
+      while (currentRadius <= maxRadius) {
+        generatedPlans = await performSearch(service, filters, currentRadius);
 
         // If we have at least 5 plans, we're done
         if (generatedPlans.length >= 5) {
           break;
         }
 
-        // If not the last radius, wait a bit before trying again
-        if (radius !== radii[radii.length - 1]) {
+        // Expand radius by 1km and wait a bit before trying again
+        currentRadius += 1000;
+        if (currentRadius <= maxRadius) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }

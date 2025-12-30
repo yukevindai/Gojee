@@ -128,21 +128,21 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
   const { diningPlaces, hangoutPlaces, hangoutType, partySize, coffeeShops } = options;
   const plans: Plan[] = [];
-  const seenPlanIds = new Set<string>(); // Track unique plan IDs
+  const usedDiningIds = new Set<string>(); // Track used dining locations
+  const usedHangoutIds = new Set<string>(); // Track used hangout locations
 
-  // Limit to top 3 dining and 3 hangout places for combinations
-  const topDining = diningPlaces.slice(0, 3);
-  const topHangout = hangoutPlaces.slice(0, 3);
+  // Limit to top 10 dining and 10 hangout places for combinations
+  const topDining = diningPlaces.slice(0, 10);
+  const topHangout = hangoutPlaces.slice(0, 10);
 
   // Generate combinations
   let planIndex = 0;
   for (const dining of topDining) {
     for (const hangout of topHangout) {
-      // Create unique plan ID
-      const planId = `${dining.id}-${hangout.id}`;
-
-      // Skip if we've already created this plan
-      if (seenPlanIds.has(planId)) continue;
+      // Skip if either location has already been used in another plan
+      if (usedDiningIds.has(dining.id) || usedHangoutIds.has(hangout.id)) {
+        continue;
+      }
 
       // Check proximity - venues should be within 10km
       const distance = calculateDistance(dining, hangout);
@@ -189,6 +189,7 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
         }
       }
 
+      const planId = `${dining.id}-${hangout.id}`;
       const plan: Plan = {
         id: planId,
         name: getPlanName(dining, hangout, planIndex),
@@ -214,7 +215,9 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       };
 
       plans.push(plan);
-      seenPlanIds.add(planId);
+      // Mark these locations as used
+      usedDiningIds.add(dining.id);
+      usedHangoutIds.add(hangout.id);
       planIndex++;
     }
   }
