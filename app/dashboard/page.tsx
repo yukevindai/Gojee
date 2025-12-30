@@ -110,6 +110,19 @@ export default function Dashboard() {
       setShowSuccess(false);
     }, 3000);
 
+    // Determine plan type from selected QuickKey or dining selection
+    let planType: 'morning' | 'afternoon' | 'fullday' | 'single' | undefined;
+
+    if (selectedQuickKey === 'morning-plan') {
+      planType = 'morning';
+    } else if (selectedQuickKey === 'afternoon-plan') {
+      planType = 'afternoon';
+    } else if (selectedQuickKey === 'full-day-plan') {
+      planType = 'fullday';
+    } else if (selectedQuickKey === 'date-night') {
+      planType = 'single';
+    }
+
     // Search for plans
     try {
       await searchPlans({
@@ -117,7 +130,14 @@ export default function Dashboard() {
         dining,
         hangout,
         location: userLocation,
+        planType,
       });
+
+      // Expand panel to show results
+      setIsPanelExpanded(true);
+      // Clear execution mode if it was active
+      setExecutionMode(null);
+      setSelectedPlan(null);
     } catch (err) {
       console.error('Plan search failed:', err);
     }
