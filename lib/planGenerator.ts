@@ -194,15 +194,15 @@ function generateSinglePlans(params: {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
-      // Find nearby side quests (minimum 2 required)
+      // Find nearby side quests (minimum 2 preferred)
       const sideQuests: ActivityStep[] = [];
       if (sideQuestPlaces && sideQuestPlaces.length > 0) {
         const nearbySideQuests = sideQuestPlaces.filter((shop) => {
           if (usedSideQuestIds.has(shop.id)) return false;
           const distanceToDining = calculateDistance(shop, dining);
           const distanceToHangout = calculateDistance(shop, hangout);
-          // Increased to 2km for more flexibility in finding side quests
-          return distanceToDining <= 2000 || distanceToHangout <= 2000;
+          // Increased to 2.5km for more flexibility in finding side quests
+          return distanceToDining <= 2500 || distanceToHangout <= 2500;
         }).slice(0, 3);
 
         nearbySideQuests.forEach(quest => {
@@ -215,8 +215,8 @@ function generateSinglePlans(params: {
         });
       }
 
-      // Skip plans with fewer than 2 side quests
-      if (sideQuests.length < 2) continue;
+      // Prefer plans with 2+ side quests, but allow 1 if needed to reach 5 plans
+      if (sideQuests.length < 1) continue;
 
       const planId = `${dining.id}-${hangout.id}`;
       const plan: Plan = {
@@ -286,11 +286,11 @@ function generateMorningPlans(params: {
           { type: 'dining', place: lunch, duration: 60 },
         ];
 
-        // Find side quests (minimum 2 required)
+        // Find side quests (minimum 2 preferred)
         const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedIds, 3);
 
-        // Skip plans with fewer than 2 side quests
-        if (sideQuests.length < 2) continue;
+        // Prefer plans with 2+ side quests, but allow 1 if needed to reach 5 plans
+        if (sideQuests.length < 1) continue;
 
         const avgCost = Math.round(((breakfast.priceLevel || 2) + (hangout.priceLevel || 2) + (lunch.priceLevel || 2)) / 3);
         const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 40 + (sideQuests.length * 25);
@@ -359,11 +359,11 @@ function generateAfternoonPlans(params: {
           { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
         ];
 
-        // Find side quests (minimum 2 required)
+        // Find side quests (minimum 2 preferred)
         const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedIds, 4);
 
-        // Skip plans with fewer than 2 side quests
-        if (sideQuests.length < 2) continue;
+        // Prefer plans with 2+ side quests, but allow 1 if needed to reach 5 plans
+        if (sideQuests.length < 1) continue;
 
         const avgCost = Math.round(((lunch.priceLevel || 2) + (hangout1.priceLevel || 2) + (hangout2.priceLevel || 2) + (dinner.priceLevel || 2)) / 4);
         const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 60 + (sideQuests.length * 25);
@@ -453,11 +453,11 @@ function generateFullDayPlans(params: {
                 { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
               ];
 
-              // Find side quests (minimum 3 required for Full Day)
+              // Find side quests (minimum 3 preferred for Full Day)
               const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 5);
 
-              // Skip plans with fewer than 3 side quests
-              if (sideQuests.length < 3) continue;
+              // Prefer plans with 3+ side quests, but allow 2 if needed to reach 5 plans
+              if (sideQuests.length < 2) continue;
 
               const avgCost = Math.round(
                 ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6
@@ -509,10 +509,10 @@ function findSideQuests(
     if (usedIds.has(quest.id)) continue;
     if (sideQuests.length >= maxQuests) break;
 
-    // Check if within 1.5km of any main location
+    // Check if within 2.5km of any main location (increased for more flexibility)
     const isNearby = mainPlaces.some(place => {
       const distance = calculateDistance(quest, place);
-      return distance <= 1500;
+      return distance <= 2500;
     });
 
     if (isNearby) {
