@@ -194,7 +194,7 @@ function generateSinglePlans(params: {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
-      // Find nearby side quests (1-3 based on availability)
+      // Find nearby side quests (minimum 2 required)
       const sideQuests: ActivityStep[] = [];
       if (sideQuestPlaces && sideQuestPlaces.length > 0) {
         const nearbySideQuests = sideQuestPlaces.filter((shop) => {
@@ -213,6 +213,9 @@ function generateSinglePlans(params: {
           usedSideQuestIds.add(quest.id);
         });
       }
+
+      // Skip plans with fewer than 2 side quests
+      if (sideQuests.length < 2) continue;
 
       const planId = `${dining.id}-${hangout.id}`;
       const plan: Plan = {
@@ -282,8 +285,11 @@ function generateMorningPlans(params: {
           { type: 'dining', place: lunch, duration: 60 },
         ];
 
-        // Find side quests
-        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedIds, 2);
+        // Find side quests (minimum 2 required)
+        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedIds, 3);
+
+        // Skip plans with fewer than 2 side quests
+        if (sideQuests.length < 2) continue;
 
         const avgCost = Math.round(((breakfast.priceLevel || 2) + (hangout.priceLevel || 2) + (lunch.priceLevel || 2)) / 3);
         const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 40 + (sideQuests.length * 25);
@@ -352,7 +358,11 @@ function generateAfternoonPlans(params: {
           { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
         ];
 
-        const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedIds, 3);
+        // Find side quests (minimum 2 required)
+        const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedIds, 4);
+
+        // Skip plans with fewer than 2 side quests
+        if (sideQuests.length < 2) continue;
 
         const avgCost = Math.round(((lunch.priceLevel || 2) + (hangout1.priceLevel || 2) + (hangout2.priceLevel || 2) + (dinner.priceLevel || 2)) / 4);
         const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 60 + (sideQuests.length * 25);
@@ -442,7 +452,11 @@ function generateFullDayPlans(params: {
                 { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
               ];
 
-              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 4);
+              // Find side quests (minimum 3 required for Full Day)
+              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 5);
+
+              // Skip plans with fewer than 3 side quests
+              if (sideQuests.length < 3) continue;
 
               const avgCost = Math.round(
                 ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6

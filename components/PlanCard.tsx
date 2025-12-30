@@ -158,10 +158,10 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
         {/* Side Quests (Optional) */}
         {plan.sideQuests && plan.sideQuests.length > 0 && (
           <>
-            {/* Sidequest Maxxing Header */}
+            {/* Side Quest Maxxing Header */}
             <div className="flex justify-center">
               <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                <span>Sidequest Maxxing?</span>
+                <span>Side Quest Maxxing?</span>
               </div>
             </div>
 
