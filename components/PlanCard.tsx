@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Star, Clock, DollarSign, MapPin, ArrowRight, Utensils, PartyPopper, Footprints, Bus, Car } from 'lucide-react';
+import { Star, Clock, DollarSign, MapPin, ArrowRight, Utensils, PartyPopper, Footprints, Bus, Car, Coffee, Gamepad2, Dumbbell, Film } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
 
@@ -40,6 +40,26 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
       case 'driving':
         return <Car className="h-3 w-3" />;
     }
+  };
+
+  const getSideQuestInfo = (types?: string[]) => {
+    if (!types) return { icon: <Coffee className="h-4 w-4" />, message: '☕ Grab a quick stop on your way!' };
+
+    if (types.includes('cafe') || types.includes('bakery')) {
+      return { icon: <Coffee className="h-4 w-4" />, message: '☕ Grab coffee or bubble tea on your way!' };
+    }
+    if (types.includes('amusement_center') || types.includes('arcade')) {
+      return { icon: <Gamepad2 className="h-4 w-4" />, message: '🎮 Stop by for some games!' };
+    }
+    if (types.includes('gym') || types.includes('fitness')) {
+      return { icon: <Dumbbell className="h-4 w-4" />, message: '💪 Hit the gym on your way!' };
+    }
+    if (types.includes('movie_theater')) {
+      return { icon: <Film className="h-4 w-4" />, message: '🎬 Catch a movie!' };
+    }
+
+    // Default
+    return { icon: <Coffee className="h-4 w-4" />, message: '☕ Grab a quick stop on your way!' };
   };
 
   const colors = colorSchemes[colorScheme];
@@ -155,6 +175,54 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
             </div>
           </div>
         </div>
+
+        {/* Side Quest (Optional) */}
+        {plan.sideQuest && (() => {
+          const sideQuestInfo = getSideQuestInfo(plan.sideQuest.place.types);
+          return (
+            <>
+              {/* Arrow */}
+              <div className="flex justify-center">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="font-medium">Optional Side Quest</span>
+                </div>
+              </div>
+
+              {/* Side Quest Step */}
+              <div className="relative rounded-xl border-2 border-dashed border-gray-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
+                    {sideQuestInfo.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">{plan.sideQuest.place.name}</div>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+                      <MapPin className="h-3 w-3" />
+                      <span className="line-clamp-1">{plan.sideQuest.place.address}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-xs">
+                      {plan.sideQuest.place.rating && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          <span className="font-medium text-gray-900">
+                            {plan.sideQuest.place.rating.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Clock className="h-3 w-3" />
+                        <span>{formatDuration(plan.sideQuest.duration)}</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">
+                      {sideQuestInfo.message}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Select Button */}

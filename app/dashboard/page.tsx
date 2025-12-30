@@ -9,6 +9,8 @@ import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
 import PlaceMarker from '@/components/PlaceMarker';
 import PlanCard from '@/components/PlanCard';
+import PlanSummaryPanel from '@/components/PlanSummaryPanel';
+import StepByStepMode from '@/components/StepByStepMode';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
@@ -39,6 +41,10 @@ export default function Dashboard() {
 
   // Panel expansion state
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+
+  // Execution mode states
+  const [executionMode, setExecutionMode] = useState<'summary' | 'stepByStep' | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -114,7 +120,76 @@ export default function Dashboard() {
   };
 
   const handlePlanSelect = (planId: string) => {
-    setSelectedPlan(selectedPlan === planId ? null : planId);
+    if (selectedPlan === planId) {
+      // Deselect
+      setSelectedPlan(null);
+      setExecutionMode(null);
+    } else {
+      // Select and show summary
+      setSelectedPlan(planId);
+      setExecutionMode('summary');
+      setIsPanelExpanded(false); // Collapse the plans list
+    }
+  };
+
+  // Execution mode handlers
+  const handleStartPlan = () => {
+    setExecutionMode('stepByStep');
+    setCurrentStepIndex(0);
+  };
+
+  const handleCloseSummary = () => {
+    setExecutionMode(null);
+    setIsPanelExpanded(true);
+  };
+
+  const handleStepComplete = () => {
+    const plan = plans.find(p => p.id === selectedPlan);
+    if (!plan) return;
+
+    const totalSteps = plan.steps.length + (plan.sideQuest ? 1 : 0);
+
+    if (currentStepIndex < totalSteps - 1) {
+      setCurrentStepIndex(currentStepIndex + 1);
+    } else {
+      // Plan completed!
+      alert('🎉 Plan completed! Hope you had a great time!');
+      setExecutionMode(null);
+      setSelectedPlan(null);
+      setCurrentStepIndex(0);
+    }
+  };
+
+  const handleStepSkip = () => {
+    handleStepComplete(); // Same logic for now
+  };
+
+  const handleStepDelay = () => {
+    alert('Delay feature coming soon! You can adjust your timeline here.');
+  };
+
+  const handleStepNext = () => {
+    handleStepComplete();
+  };
+
+  const handleCloseStepByStep = () => {
+    setExecutionMode('summary');
+    setCurrentStepIndex(0);
+  };
+
+  const handleSwapRestaurant = () => {
+    alert('Swap restaurant feature coming soon!');
+  };
+
+  const handleSwapActivity = () => {
+    alert('Swap activity feature coming soon!');
+  };
+
+  const handleRegenerate = () => {
+    setExecutionMode(null);
+    setSelectedPlan(null);
+    setIsPanelExpanded(true);
+    handleConfirm(); // Re-run the search
   };
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -137,24 +212,9 @@ export default function Dashboard() {
               plans.flatMap((plan, planIndex) => {
                 const colorScheme = getColorSchemeForIndex(planIndex);
                 const colors = colorSchemes[colorScheme];
-                return plan.steps.map((step) => (
-                  <PlaceMarker
-                    key={`${plan.id}-${step.place.id}`}
-                    place={step.place}
-                    onClick={() => console.log('Selected place:', step.place.name)}
-                    backgroundColor={colors.pinColor}
-                    borderColor={colors.pinBorder}
-                  />
-                ));
-              })
-            : // Show only places from the selected plan
-              plans
-                .filter((plan) => plan.id === selectedPlan)
-                .flatMap((plan, planIndex) => {
-                  const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
-                  const colorScheme = getColorSchemeForIndex(actualIndex);
-                  const colors = colorSchemes[colorScheme];
-                  return plan.steps.map((step) => (
+                const markers = [
+                  // Main plan steps
+                  ...plan.steps.map((step) => (
                     <PlaceMarker
                       key={`${plan.id}-${step.place.id}`}
                       place={step.place}
@@ -162,7 +222,58 @@ export default function Dashboard() {
                       backgroundColor={colors.pinColor}
                       borderColor={colors.pinBorder}
                     />
-                  ));
+                  )),
+                ];
+
+                // Add side quest marker if exists
+                if (plan.sideQuest) {
+                  markers.push(
+                    <PlaceMarker
+                      key={`${plan.id}-sidequest-${plan.sideQuest.place.id}`}
+                      place={plan.sideQuest.place}
+                      onClick={() => console.log('Side quest:', plan.sideQuest?.place.name)}
+                      backgroundColor="#F59E0B" // amber-500
+                      borderColor="#D97706" // amber-600
+                    />
+                  );
+                }
+
+                return markers;
+              })
+            : // Show only places from the selected plan
+              plans
+                .filter((plan) => plan.id === selectedPlan)
+                .flatMap((plan) => {
+                  const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
+                  const colorScheme = getColorSchemeForIndex(actualIndex);
+                  const colors = colorSchemes[colorScheme];
+                  const markers = [
+                    // Main plan steps
+                    ...plan.steps.map((step) => (
+                      <PlaceMarker
+                        key={`${plan.id}-${step.place.id}`}
+                        place={step.place}
+                        onClick={() => console.log('Selected place:', step.place.name)}
+                        backgroundColor={colors.pinColor}
+                        borderColor={colors.pinBorder}
+                      />
+                    )),
+                  ];
+
+                  // Add side quest marker if exists
+                  if (plan.sideQuest) {
+                    markers.push(
+                      <PlaceMarker
+                        key={`${plan.id}-sidequest-${plan.sideQuest.place.id}`}
+                        place={plan.sideQuest.place}
+                        onClick={() => console.log('Side quest:', plan.sideQuest?.place.name)}
+                        backgroundColor="#F59E0B" // amber-500
+                        borderColor="#D97706" // amber-600
+                      />
+                    );
+                  }
+
+                  return markers;
                 })}
         </Map>
       </APIProvider>
@@ -370,6 +481,51 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
+
+      {/* Plan Summary Panel */}
+      <AnimatePresence>
+        {executionMode === 'summary' && selectedPlan && (() => {
+          const plan = plans.find(p => p.id === selectedPlan);
+          if (!plan) return null;
+
+          const planIndex = plans.findIndex(p => p.id === selectedPlan);
+          const colorScheme = getColorSchemeForIndex(planIndex);
+
+          return (
+            <PlanSummaryPanel
+              plan={plan}
+              colorScheme={colorScheme}
+              onClose={handleCloseSummary}
+              onStartPlan={handleStartPlan}
+              onSwapRestaurant={handleSwapRestaurant}
+              onSwapActivity={handleSwapActivity}
+              onRegenerate={handleRegenerate}
+            />
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Step-by-Step Mode */}
+      {executionMode === 'stepByStep' && selectedPlan && (() => {
+        const plan = plans.find(p => p.id === selectedPlan);
+        if (!plan) return null;
+
+        const planIndex = plans.findIndex(p => p.id === selectedPlan);
+        const colorScheme = getColorSchemeForIndex(planIndex);
+
+        return (
+          <StepByStepMode
+            plan={plan}
+            colorScheme={colorScheme}
+            currentStepIndex={currentStepIndex}
+            onComplete={handleStepComplete}
+            onSkip={handleStepSkip}
+            onDelay={handleStepDelay}
+            onNext={handleStepNext}
+            onClose={handleCloseStepByStep}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -16,6 +16,7 @@ export interface Plan {
   vibe: string; // casual, romantic, adventurous, etc.
   distance: number; // distance between venues in meters
   distanceCategory: 'walking' | 'bussing' | 'driving';
+  sideQuest?: ActivityStep; // Optional side quest (e.g., bubble tea, coffee)
 }
 
 export interface GeneratePlansOptions {
@@ -23,6 +24,7 @@ export interface GeneratePlansOptions {
   hangoutPlaces: Place[];
   hangoutType: string; // 'Formal', 'Chill', 'Date', 'N/A'
   partySize: string;
+  coffeeShops?: Place[]; // Optional coffee/bubble tea shops for side quests
 }
 
 function calculateDistance(place1: Place, place2: Place): number {
@@ -42,8 +44,8 @@ function calculateDistance(place1: Place, place2: Place): number {
 }
 
 function categorizeDistance(distance: number): 'walking' | 'bussing' | 'driving' {
-  if (distance <= 1000) return 'walking'; // 0-1km
-  if (distance <= 5000) return 'bussing'; // 1-5km
+  if (distance <= 1500) return 'walking'; // 0-1.5km
+  if (distance <= 5000) return 'bussing'; // 1.5-5km
   return 'driving'; // 5km+
 }
 
@@ -124,17 +126,25 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 }
 
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
-  const { diningPlaces, hangoutPlaces, hangoutType, partySize } = options;
+  const { diningPlaces, hangoutPlaces, hangoutType, partySize, coffeeShops } = options;
   const plans: Plan[] = [];
+  const usedDiningIds = new Set<string>(); // Track used dining locations
+  const usedHangoutIds = new Set<string>(); // Track used hangout locations
+  const usedSideQuestIds = new Set<string>(); // Track used side quest locations
 
-  // Limit to top 3 dining and 3 hangout places for combinations
-  const topDining = diningPlaces.slice(0, 3);
-  const topHangout = hangoutPlaces.slice(0, 3);
+  // Limit to top 10 dining and 10 hangout places for combinations
+  const topDining = diningPlaces.slice(0, 10);
+  const topHangout = hangoutPlaces.slice(0, 10);
 
   // Generate combinations
   let planIndex = 0;
   for (const dining of topDining) {
     for (const hangout of topHangout) {
+      // Skip if either location has already been used in another plan
+      if (usedDiningIds.has(dining.id) || usedHangoutIds.has(hangout.id)) {
+        continue;
+      }
+
       // Check proximity - venues should be within 10km
       const distance = calculateDistance(dining, hangout);
       if (distance > 10000) continue; // Skip if too far (>10km)
@@ -160,8 +170,35 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
+      // Find a nearby side quest location (coffee, arcade, gym, etc.)
+      let sideQuest: ActivityStep | undefined;
+      if (coffeeShops && coffeeShops.length > 0) {
+        // Find side quest within 1.5km of either dining or hangout location
+        // that hasn't been used yet
+        const nearbySideQuest = coffeeShops.find((shop) => {
+          // Skip if this side quest has already been used
+          if (usedSideQuestIds.has(shop.id)) return false;
+
+          const distanceToDining = calculateDistance(shop, dining);
+          const distanceToHangout = calculateDistance(shop, hangout);
+          // Within 1.5km of either location
+          return distanceToDining <= 1500 || distanceToHangout <= 1500;
+        });
+
+        if (nearbySideQuest) {
+          sideQuest = {
+            type: 'hangout',
+            place: nearbySideQuest,
+            duration: 20, // 20 min for side quest
+          };
+          // Mark this side quest as used
+          usedSideQuestIds.add(nearbySideQuest.id);
+        }
+      }
+
+      const planId = `${dining.id}-${hangout.id}`;
       const plan: Plan = {
-        id: `${dining.id}-${hangout.id}`,
+        id: planId,
         name: getPlanName(dining, hangout, planIndex),
         description: getPlanDescription(dining, hangout, vibe),
         steps: [
@@ -176,14 +213,18 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
             duration: hangoutDuration,
           },
         ],
-        totalDuration: diningDuration + hangoutDuration + travelTime,
+        totalDuration: diningDuration + hangoutDuration + travelTime + (sideQuest ? 25 : 0), // +25 for side quest (20min + 5min travel)
         estimatedCost: avgCost,
         vibe,
         distance,
         distanceCategory,
+        sideQuest,
       };
 
       plans.push(plan);
+      // Mark these locations as used
+      usedDiningIds.add(dining.id);
+      usedHangoutIds.add(hangout.id);
       planIndex++;
     }
   }

@@ -27,6 +27,126 @@ export function usePlanSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to perform search at a specific radius
+  const performSearch = async (
+    service: google.maps.places.PlacesService,
+    filters: SearchFilters,
+    radius: number
+  ): Promise<Plan[]> => {
+    const { location, dining, hangout, partySize } = filters;
+
+    // Search for dining places
+    const diningTypes = getPlaceType(dining);
+    const diningRequest: google.maps.places.PlaceSearchRequest = {
+      location: new google.maps.LatLng(location.lat, location.lng),
+      radius,
+      type: diningTypes[0] || 'restaurant',
+      keyword: 'restaurant food dining',
+    };
+
+    const diningPlaces = await new Promise<Place[]>((resolve, reject) => {
+      service.nearbySearch(diningRequest, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          // Filter to only include actual restaurants/food establishments
+          const validFoodTypes = [
+            'restaurant', 'cafe', 'bar', 'food', 'bakery',
+            'meal_takeaway', 'meal_delivery', 'fast_food'
+          ];
+
+          const filteredResults = results.filter((result) => {
+            const types = result.types || [];
+            return types.some(type => validFoodTypes.includes(type));
+          });
+
+          resolve(mapPlaceResults(filteredResults.slice(0, 20)));
+        } else {
+          reject(new Error(`Dining search failed: ${status}`));
+        }
+      });
+    });
+
+    // Search for hangout places
+    const hangoutTypes = getHangoutPlaceTypes(hangout);
+    const hangoutRequest: google.maps.places.PlaceSearchRequest = {
+      location: new google.maps.LatLng(location.lat, location.lng),
+      radius,
+      type: hangoutTypes[0] || 'park',
+    };
+
+    const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
+      service.nearbySearch(hangoutRequest, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          resolve(mapPlaceResults(results.slice(0, 20)));
+        } else {
+          reject(new Error(`Hangout search failed: ${status}`));
+        }
+      });
+    });
+
+    // Search for side quest locations (coffee, arcades, gyms, etc.) for all plans
+    let coffeeShops: Place[] = [];
+
+    if (hangout === 'Date') {
+      // For Date plans: only coffee/bubble tea (no intense activities)
+      const coffeeRequest: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(location.lat, location.lng),
+        radius,
+        keyword: 'coffee bubble tea boba',
+        type: 'cafe',
+      };
+
+      coffeeShops = await new Promise<Place[]>((resolve) => {
+        service.nearbySearch(coffeeRequest, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+            resolve(mapPlaceResults(results.slice(0, 10)));
+          } else {
+            resolve([]);
+          }
+        });
+      });
+    } else {
+      // For Chill, Formal, N/A plans: coffee + arcades + gyms + movie theaters
+      const sideQuestTypes = [
+        { keyword: 'coffee bubble tea boba', type: 'cafe' },
+        { keyword: 'arcade game', type: 'amusement_center' },
+        { keyword: 'gym fitness', type: 'gym' },
+        { keyword: 'movie cinema', type: 'movie_theater' },
+      ];
+
+      const sideQuestSearches = sideQuestTypes.map((quest) => {
+        const request: google.maps.places.PlaceSearchRequest = {
+          location: new google.maps.LatLng(location.lat, location.lng),
+          radius,
+          keyword: quest.keyword,
+          type: quest.type,
+        };
+
+        return new Promise<Place[]>((resolve) => {
+          service.nearbySearch(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              resolve(mapPlaceResults(results.slice(0, 5)));
+            } else {
+              resolve([]);
+            }
+          });
+        });
+      });
+
+      // Combine all side quest results
+      const allSideQuests = await Promise.all(sideQuestSearches);
+      coffeeShops = allSideQuests.flat();
+    }
+
+    // Generate plans from the search results
+    return generatePlans({
+      diningPlaces,
+      hangoutPlaces,
+      hangoutType: hangout,
+      partySize,
+      coffeeShops,
+    });
+  };
+
   const searchPlans = useCallback(async (filters: SearchFilters) => {
     setIsLoading(true);
     setError(null);
@@ -37,68 +157,30 @@ export function usePlanSearch() {
         throw new Error('Google Maps Places library not loaded');
       }
 
-      const { location, dining, hangout, partySize } = filters;
-
       // Create a map instance (required for PlacesService)
       const mapDiv = document.createElement('div');
       const map = new google.maps.Map(mapDiv);
       const service = new google.maps.places.PlacesService(map);
 
-      // Search for dining places
-      const diningTypes = getPlaceType(dining);
-      const diningRequest: google.maps.places.PlaceSearchRequest = {
-        location: new google.maps.LatLng(location.lat, location.lng),
-        radius: 2000, // 2km radius
-        type: diningTypes[0] || 'restaurant',
-        keyword: 'restaurant food dining',
-      };
+      // Try progressively larger radii (1km increments) until we get at least 5 unique plans
+      const maxRadius = 10000; // Maximum 10km
+      let generatedPlans: Plan[] = [];
+      let currentRadius = 2000; // Start at 2km
 
-      const diningPlaces = await new Promise<Place[]>((resolve, reject) => {
-        service.nearbySearch(diningRequest, (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            // Filter to only include actual restaurants/food establishments
-            const validFoodTypes = [
-              'restaurant', 'cafe', 'bar', 'food', 'bakery',
-              'meal_takeaway', 'meal_delivery', 'fast_food'
-            ];
+      while (currentRadius <= maxRadius) {
+        generatedPlans = await performSearch(service, filters, currentRadius);
 
-            const filteredResults = results.filter((result) => {
-              const types = result.types || [];
-              return types.some(type => validFoodTypes.includes(type));
-            });
+        // If we have at least 5 plans, we're done
+        if (generatedPlans.length >= 5) {
+          break;
+        }
 
-            resolve(mapPlaceResults(filteredResults.slice(0, 10)));
-          } else {
-            reject(new Error(`Dining search failed: ${status}`));
-          }
-        });
-      });
-
-      // Search for hangout places
-      const hangoutTypes = getHangoutPlaceTypes(hangout);
-      const hangoutRequest: google.maps.places.PlaceSearchRequest = {
-        location: new google.maps.LatLng(location.lat, location.lng),
-        radius: 2000, // 2km radius
-        type: hangoutTypes[0] || 'park',
-      };
-
-      const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
-        service.nearbySearch(hangoutRequest, (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            resolve(mapPlaceResults(results.slice(0, 10)));
-          } else {
-            reject(new Error(`Hangout search failed: ${status}`));
-          }
-        });
-      });
-
-      // Generate plans from the search results
-      const generatedPlans = generatePlans({
-        diningPlaces,
-        hangoutPlaces,
-        hangoutType: hangout,
-        partySize,
-      });
+        // Expand radius by 1km and wait a bit before trying again
+        currentRadius += 1000;
+        if (currentRadius <= maxRadius) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
 
       if (generatedPlans.length === 0) {
         throw new Error('No suitable plans found. Try different filters or location.');
