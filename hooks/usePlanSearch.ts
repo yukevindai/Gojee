@@ -153,7 +153,28 @@ export function usePlanSearch() {
     const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
       service.nearbySearch(hangoutRequest, (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          resolve(mapPlaceResults(results.slice(0, 20)));
+          // Filter out lodging/hotels - we only want actual activity locations
+          const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+          const validActivityTypes = [
+            'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
+            'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
+            'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
+            'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater'
+          ];
+
+          const filteredResults = results.filter((result) => {
+            const types = result.types || [];
+
+            // Exclude if any type is a lodging type
+            const hasLodging = types.some(type => excludedTypes.includes(type));
+            if (hasLodging) return false;
+
+            // Include if it has valid activity types or if it's a general point_of_interest
+            const hasValidActivity = types.some(type => validActivityTypes.includes(type));
+            return hasValidActivity || types.includes('point_of_interest');
+          });
+
+          resolve(mapPlaceResults(filteredResults.slice(0, 20)));
         } else {
           reject(new Error(`Hangout search failed: ${status}`));
         }
