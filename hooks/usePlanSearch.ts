@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import type { Place, SearchFilters } from '@/lib/places';
 import { getPlaceType } from '@/lib/places';
 import { generatePlans, getHangoutPlaceTypes, type Plan } from '@/lib/planGenerator';
+import { getCuisineKeywords } from '@/lib/cuisines';
 
 function mapPlaceResults(results: google.maps.places.PlaceResult[]): Place[] {
   return results.map((result) => ({
@@ -33,7 +34,10 @@ export function usePlanSearch() {
     filters: SearchFilters,
     radius: number
   ): Promise<Plan[]> => {
-    const { location, dining, hangout, partySize, planType: explicitPlanType } = filters;
+    const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines } = filters;
+
+    // Get cuisine keywords for search
+    const cuisineKeywords = cuisines && cuisines.length > 0 ? getCuisineKeywords(cuisines) : '';
 
     // Determine plan type from dining selection or explicit planType
     let planType: 'morning' | 'afternoon' | 'fullday' | 'single' = explicitPlanType || 'single';
@@ -57,9 +61,14 @@ export function usePlanSearch() {
     // Helper function to search for specific meal type
     const searchMealType = async (mealType: string): Promise<Place[]> => {
       const types = getPlaceType([mealType]);
-      const keyword = mealType === 'Breakfast' ? 'breakfast brunch cafe' :
-                      mealType === 'Lunch' ? 'lunch restaurant' :
-                      'dinner restaurant';
+      let keyword = mealType === 'Breakfast' ? 'breakfast brunch cafe' :
+                    mealType === 'Lunch' ? 'lunch restaurant' :
+                    'dinner restaurant';
+
+      // Add cuisine keywords if specified
+      if (cuisineKeywords) {
+        keyword = `${keyword} ${cuisineKeywords}`;
+      }
 
       const request: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(location.lat, location.lng),
@@ -114,11 +123,18 @@ export function usePlanSearch() {
     } else {
       // Single plan - use original logic
       const diningTypes = getPlaceType(dining);
+      let diningKeyword = 'restaurant food dining';
+
+      // Add cuisine keywords if specified
+      if (cuisineKeywords) {
+        diningKeyword = `${diningKeyword} ${cuisineKeywords}`;
+      }
+
       const diningRequest: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(location.lat, location.lng),
         radius,
         type: diningTypes[0] || 'restaurant',
-        keyword: 'restaurant food dining',
+        keyword: diningKeyword,
       };
 
       diningPlaces = await new Promise<Place[]>((resolve, reject) => {

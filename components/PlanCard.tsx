@@ -9,11 +9,13 @@ interface PlanCardProps {
   plan: Plan;
   index: number;
   onSelect: () => void;
+  onConfirm: () => void;
   isSelected?: boolean;
+  isConfirmed?: boolean;
   colorScheme?: ColorScheme;
 }
 
-export default function PlanCard({ plan, index, onSelect, isSelected = false, colorScheme = 'orange' }: PlanCardProps) {
+export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected = false, isConfirmed = false, colorScheme = 'orange' }: PlanCardProps) {
   const getPriceSymbol = (level: number) => {
     return '$'.repeat(level);
   };
@@ -69,7 +71,8 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className={`overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-lg transition-all hover:shadow-2xl ${
+      onClick={onSelect}
+      className={`overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-lg transition-all hover:shadow-2xl cursor-pointer ${
         isSelected
           ? `${colors.border} ${colors.bg}`
           : 'border-transparent hover:border-gray-200'
@@ -211,15 +214,15 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onSelect();
+          onConfirm();
         }}
-        className={`mt-4 w-full rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+        className={`mt-4 w-full rounded-lg py-2.5 text-sm font-semibold transition-all ${
           isSelected
-            ? `${colors.button} text-white`
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg ring-2 ring-blue-500 ring-offset-2'
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
         }`}
       >
-        {isSelected ? 'Selected' : 'Select This Plan'}
+        {isConfirmed ? '✓ Selected' : 'Select This Plan'}
       </button>
     </motion.div>
   );

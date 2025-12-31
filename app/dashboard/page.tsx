@@ -11,9 +11,14 @@ import PlaceMarker from '@/components/PlaceMarker';
 import PlanCard from '@/components/PlanCard';
 import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
+import CuisineFilter from '@/components/CuisineFilter';
+import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
+import type { Place } from '@/lib/places';
+import type { Plan } from '@/lib/planGenerator';
+import { getUserPreferences, isOnboardingComplete } from '@/lib/userPreferences';
 
 export default function Dashboard() {
   // Geolocation state
@@ -26,9 +31,13 @@ export default function Dashboard() {
   const [partySize, setPartySize] = useState<string>('');
   const [dining, setDining] = useState<string[]>([]);
   const [hangout, setHangout] = useState<string>('');
+  const [cuisines, setCuisines] = useState<string[]>([]);
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
+
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
@@ -38,6 +47,9 @@ export default function Dashboard() {
 
   // Selected plan state
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Modified plan state (for when user shuffles venues)
+  const [modifiedPlan, setModifiedPlan] = useState<Plan | null>(null);
 
   // Panel expansion state
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
@@ -60,6 +72,21 @@ export default function Dashboard() {
           console.error('Error getting location:', error);
         }
       );
+    }
+  }, []);
+
+  // Check onboarding status and load preferences
+  useEffect(() => {
+    // Show onboarding if not completed
+    if (!isOnboardingComplete()) {
+      setShowOnboarding(true);
+    }
+
+    // Load user preferences
+    const preferences = getUserPreferences();
+    // If user hasn't manually selected cuisines, use their preferences
+    if (cuisines.length === 0 && preferences.cuisines.length > 0) {
+      setCuisines(preferences.cuisines);
     }
   }, []);
 
@@ -131,6 +158,7 @@ export default function Dashboard() {
         hangout,
         location: userLocation,
         planType,
+        cuisines: cuisines.length > 0 ? cuisines : getUserPreferences().cuisines,
       });
 
       // Expand panel to show results
@@ -147,13 +175,28 @@ export default function Dashboard() {
     if (selectedPlan === planId) {
       // Deselect
       setSelectedPlan(null);
+      setModifiedPlan(null);
       setExecutionMode(null);
     } else {
-      // Select and show summary
+      // Select (but don't enter execution mode yet)
       setSelectedPlan(planId);
-      setExecutionMode('summary');
-      setIsPanelExpanded(false); // Collapse the plans list
+      const plan = plans.find(p => p.id === planId);
+      setModifiedPlan(plan || null);
+      // Don't set execution mode here - let button click handle that
     }
+  };
+
+  const handlePlanConfirm = (planId: string) => {
+    // This is called when the "Select This Plan" button is clicked
+    if (selectedPlan !== planId) {
+      // If not already selected, select it first
+      setSelectedPlan(planId);
+      const plan = plans.find(p => p.id === planId);
+      setModifiedPlan(plan || null);
+    }
+    // Now enter execution mode
+    setExecutionMode('summary');
+    setIsPanelExpanded(false); // Collapse the plans list
   };
 
   // Execution mode handlers
@@ -168,10 +211,9 @@ export default function Dashboard() {
   };
 
   const handleStepComplete = () => {
-    const plan = plans.find(p => p.id === selectedPlan);
-    if (!plan) return;
+    if (!modifiedPlan) return;
 
-    const totalSteps = plan.steps.length + (plan.sideQuests ? plan.sideQuests.length : 0);
+    const totalSteps = modifiedPlan.steps.length + (modifiedPlan.sideQuests ? modifiedPlan.sideQuests.length : 0);
 
     if (currentStepIndex < totalSteps - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
@@ -180,6 +222,7 @@ export default function Dashboard() {
       alert('🎉 Plan completed! Hope you had a great time!');
       setExecutionMode(null);
       setSelectedPlan(null);
+      setModifiedPlan(null);
       setCurrentStepIndex(0);
     }
   };
@@ -214,6 +257,182 @@ export default function Dashboard() {
     setSelectedPlan(null);
     setIsPanelExpanded(true);
     handleConfirm(); // Re-run the search
+  };
+
+  const handleSwapStep = async (stepIndex: number) => {
+    if (!modifiedPlan) return;
+
+    const step = modifiedPlan.steps[stepIndex];
+    const isDining = step.type === 'dining';
+
+    try {
+      // Create a temporary div for the PlacesService
+      const tempDiv = document.createElement('div');
+      const service = new google.maps.places.PlacesService(tempDiv);
+
+      // Determine search parameters based on step type
+      let searchType: string;
+      let searchKeyword: string;
+
+      if (isDining) {
+        // For dining, try to determine the meal type from position
+        if (stepIndex === 0) {
+          searchType = 'restaurant';
+          searchKeyword = 'breakfast brunch cafe';
+        } else if (stepIndex === modifiedPlan.steps.length - 1) {
+          searchType = 'restaurant';
+          searchKeyword = 'dinner restaurant';
+        } else {
+          searchType = 'restaurant';
+          searchKeyword = 'lunch restaurant';
+        }
+      } else {
+        // For hangout/activity
+        searchType = 'point_of_interest';
+        searchKeyword = hangout === 'Date' ? 'romantic activity entertainment' :
+                        hangout === 'Formal' ? 'upscale entertainment' :
+                        'fun activity entertainment';
+      }
+
+      const request: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
+        radius: 2000, // Search within 2km of the current venue
+        type: searchType,
+        keyword: searchKeyword,
+      };
+
+      service.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          // Filter out the current venue and any venues already in the plan
+          const usedPlaceIds = new Set([
+            ...modifiedPlan.steps.map(s => s.place.id),
+            ...(modifiedPlan.sideQuests || []).map(sq => sq.place.id)
+          ]);
+
+          const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+          const availableResults = results.filter(result => {
+            const placeId = result.place_id || '';
+            const types = result.types || [];
+            const hasLodging = types.some(type => excludedTypes.includes(type));
+            return !usedPlaceIds.has(placeId) && !hasLodging;
+          });
+
+          if (availableResults.length === 0) {
+            alert('No alternative venues found nearby. Try regenerating the plan.');
+            return;
+          }
+
+          // Pick a random alternative
+          const randomIndex = Math.floor(Math.random() * Math.min(5, availableResults.length));
+          const newResult = availableResults[randomIndex];
+
+          // Create new place object
+          const newPlace: Place = {
+            id: newResult.place_id || '',
+            name: newResult.name || 'Unknown',
+            address: newResult.vicinity || 'No address',
+            rating: newResult.rating,
+            userRatingsTotal: newResult.user_ratings_total,
+            priceLevel: newResult.price_level,
+            location: {
+              lat: newResult.geometry?.location?.lat() || 0,
+              lng: newResult.geometry?.location?.lng() || 0,
+            },
+            types: newResult.types,
+            openNow: newResult.opening_hours?.open_now,
+          };
+
+          // Update the plan with the new venue
+          const updatedSteps = [...modifiedPlan.steps];
+          updatedSteps[stepIndex] = { ...step, place: newPlace };
+
+          const updatedPlan = { ...modifiedPlan, steps: updatedSteps };
+
+          // Update modified plan state
+          setModifiedPlan(updatedPlan);
+        } else {
+          alert('No alternative venues found. Try regenerating the plan.');
+        }
+      });
+    } catch (error) {
+      console.error('Error swapping step:', error);
+      alert('Failed to find alternative venue.');
+    }
+  };
+
+  const handleSwapSideQuest = async (sideQuestIndex: number) => {
+    if (!modifiedPlan || !modifiedPlan.sideQuests) return;
+
+    const sideQuest = modifiedPlan.sideQuests[sideQuestIndex];
+
+    try {
+      // Create a temporary div for the PlacesService
+      const tempDiv = document.createElement('div');
+      const service = new google.maps.places.PlacesService(tempDiv);
+
+      const request: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(sideQuest.place.location.lat, sideQuest.place.location.lng),
+        radius: 2500, // Search within 2.5km
+        type: 'cafe',
+        keyword: 'coffee bubble tea boba cafe dessert bakery',
+      };
+
+      service.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          if (!modifiedPlan.sideQuests) return; // Extra safety check
+
+          // Filter out venues already in the plan
+          const usedPlaceIds = new Set([
+            ...modifiedPlan.steps.map(s => s.place.id),
+            ...(modifiedPlan.sideQuests || []).map(sq => sq.place.id)
+          ]);
+
+          const availableResults = results.filter(result => {
+            const placeId = result.place_id || '';
+            return !usedPlaceIds.has(placeId);
+          });
+
+          if (availableResults.length === 0) {
+            alert('No alternative side quests found nearby.');
+            return;
+          }
+
+          // Pick a random alternative
+          const randomIndex = Math.floor(Math.random() * Math.min(5, availableResults.length));
+          const newResult = availableResults[randomIndex];
+
+          // Create new place object
+          const newPlace: Place = {
+            id: newResult.place_id || '',
+            name: newResult.name || 'Unknown',
+            address: newResult.vicinity || 'No address',
+            rating: newResult.rating,
+            userRatingsTotal: newResult.user_ratings_total,
+            priceLevel: newResult.price_level,
+            location: {
+              lat: newResult.geometry?.location?.lat() || 0,
+              lng: newResult.geometry?.location?.lng() || 0,
+            },
+            types: newResult.types,
+            openNow: newResult.opening_hours?.open_now,
+          };
+
+          // Update the side quest with the new venue
+          const updatedSideQuests = [...modifiedPlan.sideQuests!];
+          updatedSideQuests[sideQuestIndex] = { ...sideQuest, place: newPlace };
+
+          const updatedPlan = { ...modifiedPlan, sideQuests: updatedSideQuests };
+
+          // Update modified plan state
+          setModifiedPlan(updatedPlan);
+        } else {
+          alert('No alternative side quests found.');
+        }
+      });
+    } catch (error) {
+      console.error('Error swapping side quest:', error);
+      alert('Failed to find alternative side quest.');
+    }
   };
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -266,43 +485,43 @@ export default function Dashboard() {
 
                 return markers;
               })
-            : // Show only places from the selected plan
-              plans
-                .filter((plan) => plan.id === selectedPlan)
-                .flatMap((plan) => {
-                  const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
-                  const colorScheme = getColorSchemeForIndex(actualIndex);
-                  const colors = colorSchemes[colorScheme];
-                  const markers = [
-                    // Main plan steps
-                    ...plan.steps.map((step) => (
-                      <PlaceMarker
-                        key={`${plan.id}-${step.place.id}`}
-                        place={step.place}
-                        onClick={() => console.log('Selected place:', step.place.name)}
-                        backgroundColor={colors.pinColor}
-                        borderColor={colors.pinBorder}
-                      />
-                    )),
-                  ];
-
-                  // Add side quest markers if they exist
-                  if (plan.sideQuests && plan.sideQuests.length > 0) {
-                    plan.sideQuests.forEach((quest) => {
-                      markers.push(
+            : // Show only places from the selected plan (using modifiedPlan)
+              modifiedPlan
+                ? (() => {
+                    const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
+                    const colorScheme = getColorSchemeForIndex(actualIndex);
+                    const colors = colorSchemes[colorScheme];
+                    const markers = [
+                      // Main plan steps
+                      ...modifiedPlan.steps.map((step) => (
                         <PlaceMarker
-                          key={`${plan.id}-sidequest-${quest.place.id}`}
-                          place={quest.place}
-                          onClick={() => console.log('Side quest:', quest.place.name)}
-                          backgroundColor="#F59E0B" // amber-500
-                          borderColor="#D97706" // amber-600
+                          key={`${modifiedPlan.id}-${step.place.id}`}
+                          place={step.place}
+                          onClick={() => console.log('Selected place:', step.place.name)}
+                          backgroundColor={colors.pinColor}
+                          borderColor={colors.pinBorder}
                         />
-                      );
-                    });
-                  }
+                      )),
+                    ];
 
-                  return markers;
-                })}
+                    // Add side quest markers if they exist
+                    if (modifiedPlan.sideQuests && modifiedPlan.sideQuests.length > 0) {
+                      modifiedPlan.sideQuests.forEach((quest) => {
+                        markers.push(
+                          <PlaceMarker
+                            key={`${modifiedPlan.id}-sidequest-${quest.place.id}`}
+                            place={quest.place}
+                            onClick={() => console.log('Side quest:', quest.place.name)}
+                            backgroundColor="#F59E0B" // amber-500
+                            borderColor="#D97706" // amber-600
+                          />
+                        );
+                      });
+                    }
+
+                    return markers;
+                  })()
+                : []}
         </Map>
       </APIProvider>
 
@@ -333,6 +552,11 @@ export default function Dashboard() {
               value={dining}
               onChange={(val) => setDining(val as string[])}
               multiSelect
+            />
+            <CuisineFilter
+              value={cuisines}
+              onChange={setCuisines}
+              usePreferences={getUserPreferences().cuisines.length > 0}
             />
             <FilterDropdown
               label="Hangout"
@@ -454,7 +678,9 @@ export default function Dashboard() {
                     plan={plan}
                     index={index}
                     onSelect={() => handlePlanSelect(plan.id)}
+                    onConfirm={() => handlePlanConfirm(plan.id)}
                     isSelected={selectedPlan === plan.id}
+                    isConfirmed={selectedPlan === plan.id && executionMode === 'summary'}
                     colorScheme={getColorSchemeForIndex(index)}
                   />
                 ))}
@@ -518,38 +744,34 @@ export default function Dashboard() {
 
       {/* Plan Summary Panel */}
       <AnimatePresence>
-        {executionMode === 'summary' && selectedPlan && (() => {
-          const plan = plans.find(p => p.id === selectedPlan);
-          if (!plan) return null;
-
+        {executionMode === 'summary' && selectedPlan && modifiedPlan && (() => {
           const planIndex = plans.findIndex(p => p.id === selectedPlan);
           const colorScheme = getColorSchemeForIndex(planIndex);
 
           return (
             <PlanSummaryPanel
-              plan={plan}
+              plan={modifiedPlan}
               colorScheme={colorScheme}
               onClose={handleCloseSummary}
               onStartPlan={handleStartPlan}
               onSwapRestaurant={handleSwapRestaurant}
               onSwapActivity={handleSwapActivity}
               onRegenerate={handleRegenerate}
+              onSwapStep={handleSwapStep}
+              onSwapSideQuest={handleSwapSideQuest}
             />
           );
         })()}
       </AnimatePresence>
 
       {/* Step-by-Step Mode */}
-      {executionMode === 'stepByStep' && selectedPlan && (() => {
-        const plan = plans.find(p => p.id === selectedPlan);
-        if (!plan) return null;
-
+      {executionMode === 'stepByStep' && selectedPlan && modifiedPlan && (() => {
         const planIndex = plans.findIndex(p => p.id === selectedPlan);
         const colorScheme = getColorSchemeForIndex(planIndex);
 
         return (
           <StepByStepMode
-            plan={plan}
+            plan={modifiedPlan}
             colorScheme={colorScheme}
             currentStepIndex={currentStepIndex}
             onComplete={handleStepComplete}
@@ -560,6 +782,12 @@ export default function Dashboard() {
           />
         );
       })()}
+
+      {/* Preferences Onboarding */}
+      <PreferencesOnboarding
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+      />
     </div>
   );
 }

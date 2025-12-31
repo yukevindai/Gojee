@@ -23,6 +23,7 @@ export interface SearchFilters {
     lng: number;
   };
   planType?: 'morning' | 'afternoon' | 'fullday' | 'single';
+  cuisines?: string[]; // cuisine IDs
 }
 
 export function getPlaceType(diningOptions: string[]): string[] {

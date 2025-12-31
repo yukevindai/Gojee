@@ -25,6 +25,8 @@ interface PlanSummaryPanelProps {
   onSwapRestaurant: () => void;
   onSwapActivity: () => void;
   onRegenerate: () => void;
+  onSwapStep?: (stepIndex: number) => void;
+  onSwapSideQuest?: (sideQuestIndex: number) => void;
 }
 
 export default function PlanSummaryPanel({
@@ -35,6 +37,8 @@ export default function PlanSummaryPanel({
   onSwapRestaurant,
   onSwapActivity,
   onRegenerate,
+  onSwapStep,
+  onSwapSideQuest,
 }: PlanSummaryPanelProps) {
   const colors = colorSchemes[colorScheme];
 
@@ -142,42 +146,52 @@ export default function PlanSummaryPanel({
             Timeline
           </h3>
           <div className="space-y-3">
-            {/* Dining */}
-            <div className="flex items-start gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colors.diningIcon} text-white font-bold`}>
-                1
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-gray-900">{plan.steps[0].place.name}</div>
-                <div className="text-sm text-gray-600">
-                  {formatTime(startTime, plan.steps[0].duration)} · {formatDuration(plan.steps[0].duration)}
-                </div>
-              </div>
-            </div>
+            {/* All Main Steps */}
+            {plan.steps.map((step, stepIndex) => {
+              const cumulativeTime = plan.steps.slice(0, stepIndex).reduce((sum, s) => sum + s.duration, 0) + (stepIndex * 15);
+              return (
+                <div key={`step-${stepIndex}`}>
+                  {/* Step */}
+                  <div className="flex items-start gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      step.type === 'dining' ? colors.diningIcon : colors.hangoutIcon
+                    } text-white font-bold`}>
+                      {stepIndex + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-gray-900">{step.place.name}</div>
+                        {onSwapStep && (
+                          <button
+                            onClick={() => onSwapStep(stepIndex)}
+                            className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                            title="Shuffle this location"
+                          >
+                            <Shuffle className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {formatTime(startTime + cumulativeTime, step.duration)} · {formatDuration(step.duration)}
+                      </div>
+                    </div>
+                  </div>
 
-            {/* Travel */}
-            <div className="ml-5 flex items-center gap-2 text-sm text-gray-500">
-              <Navigation className="h-4 w-4" />
-              <span>{getTravelTime()}</span>
-            </div>
-
-            {/* Hangout */}
-            <div className="flex items-start gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colors.hangoutIcon} text-white font-bold`}>
-                2
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-gray-900">{plan.steps[1].place.name}</div>
-                <div className="text-sm text-gray-600">
-                  {formatTime(startTime + plan.steps[0].duration + 15, plan.steps[1].duration)} · {formatDuration(plan.steps[1].duration)}
+                  {/* Travel indicator between steps */}
+                  {stepIndex < plan.steps.length - 1 && (
+                    <div className="ml-5 flex items-center gap-2 text-sm text-gray-500 my-2">
+                      <Navigation className="h-4 w-4" />
+                      <span>{getTravelTime()}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+              );
+            })}
 
             {/* Side Quests (optional) */}
             {plan.sideQuests && plan.sideQuests.length > 0 && (
               <>
-                <div className="ml-5 flex items-center gap-2 text-sm text-gray-500">
+                <div className="ml-5 flex items-center gap-2 text-sm text-gray-500 pt-2">
                   <span className="italic">Optional {plan.sideQuests.length > 1 ? 'stops' : 'stop'}</span>
                 </div>
                 {plan.sideQuests.map((quest, idx) => (
@@ -186,7 +200,18 @@ export default function PlanSummaryPanel({
                       {plan.steps.length + idx + 1}
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{quest.place.name}</div>
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-gray-900">{quest.place.name}</div>
+                        {onSwapSideQuest && (
+                          <button
+                            onClick={() => onSwapSideQuest(idx)}
+                            className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                            title="Shuffle this side quest"
+                          >
+                            <Shuffle className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                       <div className="text-sm text-gray-600">
                         Anytime · {formatDuration(quest.duration)}
                       </div>
