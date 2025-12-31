@@ -155,13 +155,25 @@ export default function Dashboard() {
       setModifiedPlan(null);
       setExecutionMode(null);
     } else {
-      // Select and show summary
+      // Select (but don't enter execution mode yet)
       setSelectedPlan(planId);
       const plan = plans.find(p => p.id === planId);
       setModifiedPlan(plan || null);
-      setExecutionMode('summary');
-      setIsPanelExpanded(false); // Collapse the plans list
+      // Don't set execution mode here - let button click handle that
     }
+  };
+
+  const handlePlanConfirm = (planId: string) => {
+    // This is called when the "Select This Plan" button is clicked
+    if (selectedPlan !== planId) {
+      // If not already selected, select it first
+      setSelectedPlan(planId);
+      const plan = plans.find(p => p.id === planId);
+      setModifiedPlan(plan || null);
+    }
+    // Now enter execution mode
+    setExecutionMode('summary');
+    setIsPanelExpanded(false); // Collapse the plans list
   };
 
   // Execution mode handlers
@@ -638,6 +650,7 @@ export default function Dashboard() {
                     plan={plan}
                     index={index}
                     onSelect={() => handlePlanSelect(plan.id)}
+                    onConfirm={() => handlePlanConfirm(plan.id)}
                     isSelected={selectedPlan === plan.id}
                     colorScheme={getColorSchemeForIndex(index)}
                   />
