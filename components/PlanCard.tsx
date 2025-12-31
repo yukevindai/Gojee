@@ -213,13 +213,13 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
           e.stopPropagation();
           onSelect();
         }}
-        className={`mt-4 w-full rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+        className={`mt-4 w-full rounded-lg py-2.5 text-sm font-semibold transition-all ${
           isSelected
-            ? `${colors.button} text-white`
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? `${colors.button} text-white shadow-lg ring-2 ring-offset-2 ${colors.border.replace('border-', 'ring-')}`
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
         }`}
       >
-        {isSelected ? 'Selected' : 'Select This Plan'}
+        {isSelected ? '✓ Selected' : 'Select This Plan'}
       </button>
     </motion.div>
   );
