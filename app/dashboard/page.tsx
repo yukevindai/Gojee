@@ -779,6 +779,7 @@ export default function Dashboard() {
             onDelay={handleStepDelay}
             onNext={handleStepNext}
             onClose={handleCloseStepByStep}
+            onSwapStep={handleSwapStep}
           />
         );
       })()}
