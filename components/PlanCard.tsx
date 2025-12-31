@@ -69,8 +69,7 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      onClick={onSelect}
-      className={`cursor-pointer overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-lg transition-all hover:shadow-2xl ${
+      className={`overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-lg transition-all hover:shadow-2xl ${
         isSelected
           ? `${colors.border} ${colors.bg}`
           : 'border-transparent hover:border-gray-200'
@@ -156,52 +155,56 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
         ))}
 
         {/* Side Quests (Optional) */}
-        {plan.sideQuests && plan.sideQuests.length > 0 && plan.sideQuests.map((sideQuest, idx) => {
-          const sideQuestInfo = getSideQuestInfo(sideQuest.place.types);
-          return (
-            <div key={sideQuest.place.id}>
-              {/* Arrow */}
-              <div className="flex justify-center">
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="font-medium">Optional Side Quest {plan.sideQuests!.length > 1 ? `${idx + 1}` : ''}</span>
-                </div>
-              </div>
-
-              {/* Side Quest Step */}
-              <div className="relative rounded-xl border-2 border-dashed border-gray-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
-                    {sideQuestInfo.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">{sideQuest.place.name}</div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
-                      <MapPin className="h-3 w-3" />
-                      <span className="line-clamp-1">{sideQuest.place.address}</span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-3 text-xs">
-                      {sideQuest.place.rating && (
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          <span className="font-medium text-gray-900">
-                            {sideQuest.place.rating.toFixed(1)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatDuration(sideQuest.duration)}</span>
-                      </div>
-                    </div>
-                    <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">
-                      {sideQuestInfo.message}
-                    </div>
-                  </div>
-                </div>
+        {plan.sideQuests && plan.sideQuests.length > 0 && (
+          <>
+            {/* Side Quest Maxxing Header */}
+            <div className="flex justify-center">
+              <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                <span>Side Quest Maxxing?</span>
               </div>
             </div>
-          );
-        })}
+
+            {/* Collective Box for All Side Quests */}
+            <div className="relative rounded-xl border-2 border-dashed border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 space-y-3">
+              {plan.sideQuests.map((sideQuest, idx) => {
+                const sideQuestInfo = getSideQuestInfo(sideQuest.place.types);
+                return (
+                  <div key={sideQuest.place.id} className={idx > 0 ? "pt-3 border-t border-amber-200" : ""}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
+                        {sideQuestInfo.icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900">{sideQuest.place.name}</div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
+                          <MapPin className="h-3 w-3" />
+                          <span className="line-clamp-1">{sideQuest.place.address}</span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-3 text-xs">
+                          {sideQuest.place.rating && (
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                              <span className="font-medium text-gray-900">
+                                {sideQuest.place.rating.toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatDuration(sideQuest.duration)}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">
+                          {sideQuestInfo.message}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Select Button */}
