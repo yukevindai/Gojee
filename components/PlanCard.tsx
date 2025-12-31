@@ -69,8 +69,7 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      onClick={onSelect}
-      className={`cursor-pointer overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-lg transition-all hover:shadow-2xl ${
+      className={`overflow-hidden rounded-2xl border-2 bg-white p-5 shadow-lg transition-all hover:shadow-2xl ${
         isSelected
           ? `${colors.border} ${colors.bg}`
           : 'border-transparent hover:border-gray-200'
