@@ -11,11 +11,14 @@ import PlaceMarker from '@/components/PlaceMarker';
 import PlanCard from '@/components/PlanCard';
 import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
+import CuisineFilter from '@/components/CuisineFilter';
+import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import type { Place } from '@/lib/places';
 import type { Plan } from '@/lib/planGenerator';
+import { getUserPreferences, isOnboardingComplete } from '@/lib/userPreferences';
 
 export default function Dashboard() {
   // Geolocation state
@@ -28,9 +31,13 @@ export default function Dashboard() {
   const [partySize, setPartySize] = useState<string>('');
   const [dining, setDining] = useState<string[]>([]);
   const [hangout, setHangout] = useState<string>('');
+  const [cuisines, setCuisines] = useState<string[]>([]);
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
+
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Success state
   const [showSuccess, setShowSuccess] = useState(false);
@@ -65,6 +72,21 @@ export default function Dashboard() {
           console.error('Error getting location:', error);
         }
       );
+    }
+  }, []);
+
+  // Check onboarding status and load preferences
+  useEffect(() => {
+    // Show onboarding if not completed
+    if (!isOnboardingComplete()) {
+      setShowOnboarding(true);
+    }
+
+    // Load user preferences
+    const preferences = getUserPreferences();
+    // If user hasn't manually selected cuisines, use their preferences
+    if (cuisines.length === 0 && preferences.cuisines.length > 0) {
+      setCuisines(preferences.cuisines);
     }
   }, []);
 
@@ -136,6 +158,7 @@ export default function Dashboard() {
         hangout,
         location: userLocation,
         planType,
+        cuisines: cuisines.length > 0 ? cuisines : getUserPreferences().cuisines,
       });
 
       // Expand panel to show results
@@ -530,6 +553,11 @@ export default function Dashboard() {
               onChange={(val) => setDining(val as string[])}
               multiSelect
             />
+            <CuisineFilter
+              value={cuisines}
+              onChange={setCuisines}
+              usePreferences={getUserPreferences().cuisines.length > 0}
+            />
             <FilterDropdown
               label="Hangout"
               options={['Formal', 'Chill', 'Date', 'N/A']}
@@ -754,6 +782,12 @@ export default function Dashboard() {
           />
         );
       })()}
+
+      {/* Preferences Onboarding */}
+      <PreferencesOnboarding
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+      />
     </div>
   );
 }
