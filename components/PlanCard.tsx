@@ -215,7 +215,7 @@ export default function PlanCard({ plan, index, onSelect, isSelected = false, co
         }}
         className={`mt-4 w-full rounded-lg py-2.5 text-sm font-semibold transition-all ${
           isSelected
-            ? `${colors.button} text-white shadow-lg ring-2 ring-offset-2 ${colors.border.replace('border-', 'ring-')}`
+            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg ring-2 ring-blue-500 ring-offset-2'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
         }`}
       >
