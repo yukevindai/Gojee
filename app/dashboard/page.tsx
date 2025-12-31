@@ -652,6 +652,7 @@ export default function Dashboard() {
                     onSelect={() => handlePlanSelect(plan.id)}
                     onConfirm={() => handlePlanConfirm(plan.id)}
                     isSelected={selectedPlan === plan.id}
+                    isConfirmed={selectedPlan === plan.id && executionMode === 'summary'}
                     colorScheme={getColorSchemeForIndex(index)}
                   />
                 ))}

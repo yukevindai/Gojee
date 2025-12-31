@@ -11,10 +11,11 @@ interface PlanCardProps {
   onSelect: () => void;
   onConfirm: () => void;
   isSelected?: boolean;
+  isConfirmed?: boolean;
   colorScheme?: ColorScheme;
 }
 
-export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected = false, colorScheme = 'orange' }: PlanCardProps) {
+export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected = false, isConfirmed = false, colorScheme = 'orange' }: PlanCardProps) {
   const getPriceSymbol = (level: number) => {
     return '$'.repeat(level);
   };
@@ -221,7 +222,7 @@ export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected 
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
         }`}
       >
-        {isSelected ? '✓ Selected' : 'Select This Plan'}
+        {isConfirmed ? '✓ Selected' : 'Select This Plan'}
       </button>
     </motion.div>
   );
