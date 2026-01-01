@@ -837,6 +837,10 @@ export default function Dashboard() {
               onRegenerate={handleRegenerate}
               onSwapStep={handleSwapStep}
               onSwapSideQuest={handleSwapSideQuest}
+              isEditingMode={isEditingMode}
+              editingStepIndex={editingStepIndex}
+              onConfirmEdit={handleConfirmSwap}
+              onCancelEdit={handleCancelSwap}
             />
           );
         })()}
