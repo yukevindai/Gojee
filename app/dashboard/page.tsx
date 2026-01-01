@@ -254,11 +254,29 @@ export default function Dashboard() {
   };
 
   const handleSwapRestaurant = () => {
-    alert('Swap restaurant feature coming soon!');
+    if (!modifiedPlan) return;
+
+    // Find the first dining step
+    const restaurantIndex = modifiedPlan.steps.findIndex(step => step.type === 'dining');
+
+    if (restaurantIndex !== -1) {
+      handleSwapStep(restaurantIndex);
+    } else {
+      alert('No restaurant found in this plan.');
+    }
   };
 
   const handleSwapActivity = () => {
-    alert('Swap activity feature coming soon!');
+    if (!modifiedPlan) return;
+
+    // Find the first non-dining step (activity/hangout)
+    const activityIndex = modifiedPlan.steps.findIndex(step => step.type === 'hangout');
+
+    if (activityIndex !== -1) {
+      handleSwapStep(activityIndex);
+    } else {
+      alert('No activity found in this plan.');
+    }
   };
 
   const handleRegenerate = () => {
@@ -268,6 +286,99 @@ export default function Dashboard() {
     handleConfirm(); // Re-run the search
   };
 
+  // Instant shuffle - picks a random alternative and swaps immediately
+  const handleShuffleStep = async (stepIndex: number) => {
+    if (!modifiedPlan) return;
+
+    const step = modifiedPlan.steps[stepIndex];
+    const isDining = step.type === 'dining';
+
+    try {
+      const tempDiv = document.createElement('div');
+      const service = new google.maps.places.PlacesService(tempDiv);
+
+      let searchType: string;
+      let searchKeyword: string;
+
+      if (isDining) {
+        if (stepIndex === 0) {
+          searchType = 'restaurant';
+          searchKeyword = 'breakfast brunch cafe';
+        } else if (stepIndex === modifiedPlan.steps.length - 1) {
+          searchType = 'restaurant';
+          searchKeyword = 'dinner restaurant';
+        } else {
+          searchType = 'restaurant';
+          searchKeyword = 'lunch restaurant';
+        }
+      } else {
+        searchType = 'point_of_interest';
+        searchKeyword = hangout === 'Date' ? 'romantic activity entertainment' :
+                        hangout === 'Formal' ? 'upscale entertainment' :
+                        'fun activity entertainment';
+      }
+
+      const request: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
+        radius: 2000,
+        type: searchType,
+        keyword: searchKeyword,
+      };
+
+      service.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          const usedPlaceIds = new Set([
+            ...modifiedPlan.steps.map(s => s.place.id),
+            ...(modifiedPlan.sideQuests || []).map(sq => sq.place.id)
+          ]);
+
+          const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+          const availableResults = results.filter(result => {
+            const placeId = result.place_id || '';
+            const types = result.types || [];
+            const hasLodging = types.some(type => excludedTypes.includes(type));
+            return !usedPlaceIds.has(placeId) && !hasLodging;
+          });
+
+          if (availableResults.length === 0) {
+            alert('No alternative venues found nearby.');
+            return;
+          }
+
+          // Pick a random alternative from the first 5
+          const randomIndex = Math.floor(Math.random() * Math.min(5, availableResults.length));
+          const newResult = availableResults[randomIndex];
+
+          const newPlace: Place = {
+            id: newResult.place_id || '',
+            name: newResult.name || 'Unknown',
+            address: newResult.vicinity || 'No address',
+            rating: newResult.rating,
+            userRatingsTotal: newResult.user_ratings_total,
+            priceLevel: newResult.price_level,
+            location: {
+              lat: newResult.geometry?.location?.lat() || 0,
+              lng: newResult.geometry?.location?.lng() || 0,
+            },
+            types: newResult.types,
+            openNow: newResult.opening_hours?.open_now,
+          };
+
+          // Immediately update the plan
+          const updatedSteps = [...modifiedPlan.steps];
+          updatedSteps[stepIndex] = { ...step, place: newPlace };
+          setModifiedPlan({ ...modifiedPlan, steps: updatedSteps });
+        } else {
+          alert('No alternative venues found.');
+        }
+      });
+    } catch (error) {
+      console.error('Error shuffling step:', error);
+      alert('Failed to shuffle venue.');
+    }
+  };
+
+  // Editing mode swap - shows alternatives with preview
   const handleSwapStep = async (stepIndex: number) => {
     if (!modifiedPlan) return;
 
@@ -836,6 +947,7 @@ export default function Dashboard() {
               onSwapActivity={handleSwapActivity}
               onRegenerate={handleRegenerate}
               onSwapStep={handleSwapStep}
+              onShuffleStep={handleShuffleStep}
               onSwapSideQuest={handleSwapSideQuest}
               isEditingMode={isEditingMode}
               editingStepIndex={editingStepIndex}

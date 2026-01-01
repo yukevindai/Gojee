@@ -28,6 +28,7 @@ interface PlanSummaryPanelProps {
   onSwapActivity: () => void;
   onRegenerate: () => void;
   onSwapStep?: (stepIndex: number) => void;
+  onShuffleStep?: (stepIndex: number) => void;
   onSwapSideQuest?: (sideQuestIndex: number) => void;
   isEditingMode?: boolean;
   editingStepIndex?: number | null;
@@ -44,6 +45,7 @@ export default function PlanSummaryPanel({
   onSwapActivity,
   onRegenerate,
   onSwapStep,
+  onShuffleStep,
   onSwapSideQuest,
   isEditingMode,
   editingStepIndex,
@@ -202,9 +204,9 @@ export default function PlanSummaryPanel({
                             </span>
                           )}
                         </div>
-                        {onSwapStep && !isEditingMode && (
+                        {onShuffleStep && (
                           <button
-                            onClick={() => onSwapStep(stepIndex)}
+                            onClick={() => onShuffleStep(stepIndex)}
                             className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
                             title="Shuffle this location"
                           >
