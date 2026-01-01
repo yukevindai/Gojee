@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Clock,
@@ -12,7 +12,9 @@ import {
   RefreshCw,
   Shuffle,
   PlayCircle,
-  ChevronRight
+  ChevronRight,
+  Check,
+  Edit3
 } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
@@ -27,6 +29,10 @@ interface PlanSummaryPanelProps {
   onRegenerate: () => void;
   onSwapStep?: (stepIndex: number) => void;
   onSwapSideQuest?: (sideQuestIndex: number) => void;
+  isEditingMode?: boolean;
+  editingStepIndex?: number | null;
+  onConfirmEdit?: () => void;
+  onCancelEdit?: () => void;
 }
 
 export default function PlanSummaryPanel({
@@ -39,6 +45,10 @@ export default function PlanSummaryPanel({
   onRegenerate,
   onSwapStep,
   onSwapSideQuest,
+  isEditingMode,
+  editingStepIndex,
+  onConfirmEdit,
+  onCancelEdit,
 }: PlanSummaryPanelProps) {
   const colors = colorSchemes[colorScheme];
 
@@ -138,6 +148,23 @@ export default function PlanSummaryPanel({
         </div>
       </div>
 
+      {/* Editing Mode Banner */}
+      <AnimatePresence>
+        {isEditingMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-blue-50 border-b border-blue-200 px-6 py-3 overflow-hidden"
+          >
+            <div className="flex items-center gap-2 text-sm text-blue-900">
+              <Edit3 className="h-4 w-4" />
+              <span className="font-medium">Editing plan — changes won't start until you confirm</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="p-6 space-y-6">
         {/* Timeline */}
         <div>
@@ -149,10 +176,16 @@ export default function PlanSummaryPanel({
             {/* All Main Steps */}
             {plan.steps.map((step, stepIndex) => {
               const cumulativeTime = plan.steps.slice(0, stepIndex).reduce((sum, s) => sum + s.duration, 0) + (stepIndex * 15);
+              const isBeingEdited = isEditingMode && editingStepIndex === stepIndex;
+              const isOtherStep = isEditingMode && editingStepIndex !== stepIndex;
+
               return (
                 <div key={`step-${stepIndex}`}>
                   {/* Step */}
-                  <div className="flex items-start gap-3">
+                  <div className={`flex items-start gap-3 transition-all ${
+                    isBeingEdited ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg p-2 -m-2 bg-blue-50' :
+                    isOtherStep ? 'opacity-40' : ''
+                  }`}>
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                       step.type === 'dining' ? colors.diningIcon : colors.hangoutIcon
                     } text-white font-bold`}>
@@ -160,8 +193,16 @@ export default function PlanSummaryPanel({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <div className="font-semibold text-gray-900">{step.place.name}</div>
-                        {onSwapStep && (
+                        <div className="font-semibold text-gray-900">
+                          {step.place.name}
+                          {isBeingEdited && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white">
+                              <Edit3 className="h-3 w-3" />
+                              Editing
+                            </span>
+                          )}
+                        </div>
+                        {onSwapStep && !isEditingMode && (
                           <button
                             onClick={() => onSwapStep(stepIndex)}
                             className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
@@ -241,51 +282,72 @@ export default function PlanSummaryPanel({
 
         {/* Action Buttons */}
         <div className="space-y-3 pt-4 border-t">
-          {/* Primary: Start Plan */}
-          <button
-            onClick={onStartPlan}
-            className={`w-full flex items-center justify-center gap-3 ${colors.button} text-white rounded-xl py-4 font-bold text-lg shadow-lg hover:shadow-xl transition-all`}
-          >
-            <PlayCircle className="h-6 w-6" />
-            Start Plan
-          </button>
+          {isEditingMode ? (
+            /* Editing Mode Actions */
+            <div className="flex gap-3">
+              <button
+                onClick={onCancelEdit}
+                className="flex-1 rounded-xl border-2 border-gray-300 bg-white px-6 py-4 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onConfirmEdit}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-4 font-semibold text-white hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all"
+              >
+                <Check className="h-5 w-5" />
+                Confirm Changes
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Primary: Start Plan */}
+              <button
+                onClick={onStartPlan}
+                className={`w-full flex items-center justify-center gap-3 ${colors.button} text-white rounded-xl py-4 font-bold text-lg shadow-lg hover:shadow-xl transition-all`}
+              >
+                <PlayCircle className="h-6 w-6" />
+                Start Plan
+              </button>
 
-          {/* Secondary Actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={onSwapRestaurant}
-              className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 font-medium text-sm text-gray-700 transition-colors"
-            >
-              <Shuffle className="h-4 w-4" />
-              Swap Restaurant
-            </button>
-            <button
-              onClick={onSwapActivity}
-              className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 font-medium text-sm text-gray-700 transition-colors"
-            >
-              <Shuffle className="h-4 w-4" />
-              Swap Activity
-            </button>
-          </div>
+              {/* Secondary Actions */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={onSwapRestaurant}
+                  className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 font-medium text-sm text-gray-700 transition-colors"
+                >
+                  <Shuffle className="h-4 w-4" />
+                  Swap Restaurant
+                </button>
+                <button
+                  onClick={onSwapActivity}
+                  className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-xl py-3 font-medium text-sm text-gray-700 transition-colors"
+                >
+                  <Shuffle className="h-4 w-4" />
+                  Swap Activity
+                </button>
+              </div>
 
-          {/* Utility Actions */}
-          <div className="grid grid-cols-3 gap-2">
-            <button className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors">
-              <Share2 className="h-4 w-4" />
-              Share
-            </button>
-            <button className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors">
-              <Bookmark className="h-4 w-4" />
-              Save
-            </button>
-            <button
-              onClick={onRegenerate}
-              className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Regenerate
-            </button>
-          </div>
+              {/* Utility Actions */}
+              <div className="grid grid-cols-3 gap-2">
+                <button className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </button>
+                <button className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors">
+                  <Bookmark className="h-4 w-4" />
+                  Save
+                </button>
+                <button
+                  onClick={onRegenerate}
+                  className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Regenerate
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </motion.div>

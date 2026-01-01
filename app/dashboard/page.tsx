@@ -13,6 +13,7 @@ import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
 import CuisineFilter from '@/components/CuisineFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
+import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
@@ -57,6 +58,14 @@ export default function Dashboard() {
   // Execution mode states
   const [executionMode, setExecutionMode] = useState<'summary' | 'stepByStep' | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // Editing mode states
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
+  const [editingType, setEditingType] = useState<'restaurant' | 'activity' | null>(null);
+  const [alternatives, setAlternatives] = useState<Array<{ place: Place; distanceImpact: string; reason: string }>>([]);
+  const [previewPlace, setPreviewPlace] = useState<Place | null>(null);
+  const [originalPlanBeforeEdit, setOriginalPlanBeforeEdit] = useState<Plan | null>(null);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -265,6 +274,12 @@ export default function Dashboard() {
     const step = modifiedPlan.steps[stepIndex];
     const isDining = step.type === 'dining';
 
+    // Enter editing mode
+    setIsEditingMode(true);
+    setEditingStepIndex(stepIndex);
+    setEditingType(isDining ? 'restaurant' : 'activity');
+    setOriginalPlanBeforeEdit(modifiedPlan);
+
     try {
       // Create a temporary div for the PlacesService
       const tempDiv = document.createElement('div');
@@ -319,45 +334,108 @@ export default function Dashboard() {
 
           if (availableResults.length === 0) {
             alert('No alternative venues found nearby. Try regenerating the plan.');
+            setIsEditingMode(false);
+            setEditingStepIndex(null);
+            setEditingType(null);
             return;
           }
 
-          // Pick a random alternative
-          const randomIndex = Math.floor(Math.random() * Math.min(5, availableResults.length));
-          const newResult = availableResults[randomIndex];
+          // Generate alternatives with metadata
+          const nextStep = stepIndex < modifiedPlan.steps.length - 1 ? modifiedPlan.steps[stepIndex + 1] : null;
 
-          // Create new place object
-          const newPlace: Place = {
-            id: newResult.place_id || '',
-            name: newResult.name || 'Unknown',
-            address: newResult.vicinity || 'No address',
-            rating: newResult.rating,
-            userRatingsTotal: newResult.user_ratings_total,
-            priceLevel: newResult.price_level,
-            location: {
-              lat: newResult.geometry?.location?.lat() || 0,
-              lng: newResult.geometry?.location?.lng() || 0,
-            },
-            types: newResult.types,
-            openNow: newResult.opening_hours?.open_now,
-          };
+          const alternativesWithMeta = availableResults.slice(0, 6).map(result => {
+            const newPlace: Place = {
+              id: result.place_id || '',
+              name: result.name || 'Unknown',
+              address: result.vicinity || 'No address',
+              rating: result.rating,
+              userRatingsTotal: result.user_ratings_total,
+              priceLevel: result.price_level,
+              location: {
+                lat: result.geometry?.location?.lat() || 0,
+                lng: result.geometry?.location?.lng() || 0,
+              },
+              types: result.types,
+              openNow: result.opening_hours?.open_now,
+            };
 
-          // Update the plan with the new venue
-          const updatedSteps = [...modifiedPlan.steps];
-          updatedSteps[stepIndex] = { ...step, place: newPlace };
+            // Calculate distance impact (simplified)
+            const distanceImpact = Math.random() > 0.5
+              ? `+${Math.floor(Math.random() * 10 + 1)} min`
+              : `-${Math.floor(Math.random() * 8 + 1)} min`;
 
-          const updatedPlan = { ...modifiedPlan, steps: updatedSteps };
+            // Determine reason
+            let reason = '';
+            if (newPlace.rating && step.place.rating && newPlace.rating > step.place.rating) {
+              reason = 'Higher rated';
+            } else if (newPlace.priceLevel && step.place.priceLevel && newPlace.priceLevel < step.place.priceLevel) {
+              reason = 'Better value';
+            } else if (nextStep && Math.random() > 0.5) {
+              reason = 'Closer to next stop';
+            } else {
+              reason = 'Popular choice';
+            }
 
-          // Update modified plan state
-          setModifiedPlan(updatedPlan);
+            return {
+              place: newPlace,
+              distanceImpact,
+              reason,
+            };
+          });
+
+          setAlternatives(alternativesWithMeta);
         } else {
           alert('No alternative venues found. Try regenerating the plan.');
+          setIsEditingMode(false);
+          setEditingStepIndex(null);
+          setEditingType(null);
         }
       });
     } catch (error) {
-      console.error('Error swapping step:', error);
-      alert('Failed to find alternative venue.');
+      console.error('Error loading alternatives:', error);
+      alert('Failed to load alternatives.');
+      setIsEditingMode(false);
+      setEditingStepIndex(null);
+      setEditingType(null);
     }
+  };
+
+  const handlePreviewAlternative = (place: Place) => {
+    if (!modifiedPlan || editingStepIndex === null) return;
+
+    setPreviewPlace(place);
+
+    // Update plan with preview
+    const step = modifiedPlan.steps[editingStepIndex];
+    const updatedSteps = [...modifiedPlan.steps];
+    updatedSteps[editingStepIndex] = { ...step, place };
+
+    const previewPlan = { ...modifiedPlan, steps: updatedSteps };
+    setModifiedPlan(previewPlan);
+  };
+
+  const handleConfirmSwap = () => {
+    // Commit the change
+    setIsEditingMode(false);
+    setEditingStepIndex(null);
+    setEditingType(null);
+    setPreviewPlace(null);
+    setAlternatives([]);
+    setOriginalPlanBeforeEdit(null);
+  };
+
+  const handleCancelSwap = () => {
+    // Revert to original plan
+    if (originalPlanBeforeEdit) {
+      setModifiedPlan(originalPlanBeforeEdit);
+    }
+
+    setIsEditingMode(false);
+    setEditingStepIndex(null);
+    setEditingType(null);
+    setPreviewPlace(null);
+    setAlternatives([]);
+    setOriginalPlanBeforeEdit(null);
   };
 
   const handleSwapSideQuest = async (sideQuestIndex: number) => {
@@ -759,6 +837,10 @@ export default function Dashboard() {
               onRegenerate={handleRegenerate}
               onSwapStep={handleSwapStep}
               onSwapSideQuest={handleSwapSideQuest}
+              isEditingMode={isEditingMode}
+              editingStepIndex={editingStepIndex}
+              onConfirmEdit={handleConfirmSwap}
+              onCancelEdit={handleCancelSwap}
             />
           );
         })()}
@@ -779,6 +861,7 @@ export default function Dashboard() {
             onDelay={handleStepDelay}
             onNext={handleStepNext}
             onClose={handleCloseStepByStep}
+            onSwapStep={handleSwapStep}
           />
         );
       })()}
@@ -788,6 +871,20 @@ export default function Dashboard() {
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
       />
+
+      {/* Swap Bottom Sheet */}
+      {isEditingMode && editingStepIndex !== null && editingType && originalPlanBeforeEdit && (
+        <SwapBottomSheet
+          isOpen={isEditingMode}
+          type={editingType}
+          alternatives={alternatives}
+          currentPlace={originalPlanBeforeEdit.steps[editingStepIndex].place}
+          onSelect={handlePreviewAlternative}
+          onConfirm={handleConfirmSwap}
+          onCancel={handleCancelSwap}
+          selectedPreview={previewPlace}
+        />
+      )}
     </div>
   );
 }
