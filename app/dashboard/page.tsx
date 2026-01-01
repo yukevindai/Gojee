@@ -15,7 +15,7 @@ import CuisineFilter from '@/components/CuisineFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
-import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import type { Place } from '@/lib/places';
 import type { Plan } from '@/lib/planGenerator';
@@ -714,13 +714,22 @@ export default function Dashboard() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">GrassMaxxing</h1>
-            <Link
-              href="/"
-              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
-            >
-              <Home className="h-4 w-4" />
-              Home
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/library"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+              >
+                <Heart className="h-4 w-4" />
+                Saved
+              </Link>
+              <Link
+                href="/"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+              >
+                <Home className="h-4 w-4" />
+                Home
+              </Link>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
