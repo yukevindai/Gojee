@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -9,6 +9,7 @@ import {
   Phone,
   Navigation,
   Share2,
+  Heart,
   Clock,
   DollarSign,
   CheckCircle,
@@ -25,6 +26,7 @@ import {
 import type { Plan, ActivityStep } from '@/lib/planGenerator';
 import type { Place } from '@/lib/places';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
+import { savePlan, unsavePlan, isPlanSaved } from '@/lib/savedPlans';
 
 interface StepByStepModeProps {
   plan: Plan;
@@ -54,6 +56,12 @@ export default function StepByStepMode({
   const [showWhyThis, setShowWhyThis] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [delayMinutes, setDelayMinutes] = useState(0);
+  const [isSaved, setIsSaved] = useState(false);
+  const [showSaveToast, setShowSaveToast] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(isPlanSaved(plan.id));
+  }, [plan.id]);
 
   // Include side quests as steps if they exist
   const allSteps: ActivityStep[] = [...plan.steps];
@@ -148,6 +156,18 @@ export default function StepByStepMode({
         `${shareData.text}\n${currentStep.place.address}`
       );
       alert('Plan details copied to clipboard!');
+    }
+  };
+
+  const handleToggleSave = () => {
+    if (isSaved) {
+      unsavePlan(plan.id);
+      setIsSaved(false);
+    } else {
+      savePlan(plan);
+      setIsSaved(true);
+      setShowSaveToast(true);
+      setTimeout(() => setShowSaveToast(false), 2000);
     }
   };
 
@@ -291,13 +311,13 @@ export default function StepByStepMode({
 
           {/* Secondary Actions - Visible but Secondary */}
           <div className="px-6 pb-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 onClick={handleSwap}
                 className="flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl py-3 font-medium transition-colors"
               >
                 <Shuffle className="h-4 w-4" />
-                Swap {currentStep.type === 'dining' ? 'Restaurant' : 'Activity'}
+                Swap
               </button>
               <button
                 onClick={handleShare}
@@ -305,6 +325,17 @@ export default function StepByStepMode({
               >
                 <Share2 className="h-4 w-4" />
                 Share
+              </button>
+              <button
+                onClick={handleToggleSave}
+                className={`flex items-center justify-center gap-2 rounded-xl py-3 font-medium transition-colors ${
+                  isSaved
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Heart className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
+                {isSaved ? 'Saved' : 'Save'}
               </button>
             </div>
           </div>
@@ -467,6 +498,21 @@ export default function StepByStepMode({
                   </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Save Toast */}
+        <AnimatePresence>
+          {showSaveToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+            >
+              <Heart className="h-4 w-4 fill-current" />
+              <span className="text-sm font-medium">Plan saved!</span>
             </motion.div>
           )}
         </AnimatePresence>
