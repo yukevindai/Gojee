@@ -312,16 +312,14 @@ export default function Dashboard() {
           searchKeyword = 'lunch restaurant';
         }
       } else {
-        searchType = 'point_of_interest';
-        searchKeyword = hangout === 'Date' ? 'romantic activity entertainment' :
-                        hangout === 'Formal' ? 'upscale entertainment' :
-                        'fun activity entertainment';
+        // For activities - use broader search with specific activity types
+        searchType = 'tourist_attraction';
+        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction';
       }
 
       const request: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
-        radius: 2000,
-        type: searchType,
+        radius: 3000, // Increased radius for activities
         keyword: searchKeyword,
       };
 
@@ -413,17 +411,14 @@ export default function Dashboard() {
           searchKeyword = 'lunch restaurant';
         }
       } else {
-        // For hangout/activity
-        searchType = 'point_of_interest';
-        searchKeyword = hangout === 'Date' ? 'romantic activity entertainment' :
-                        hangout === 'Formal' ? 'upscale entertainment' :
-                        'fun activity entertainment';
+        // For activities - use broader search with specific activity types
+        searchType = 'tourist_attraction';
+        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction';
       }
 
       const request: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
-        radius: 2000, // Search within 2km of the current venue
-        type: searchType,
+        radius: 3000, // Increased radius for activities
         keyword: searchKeyword,
       };
 
