@@ -251,30 +251,36 @@ export function usePlanSearch() {
         });
       });
     } else {
-      // For Chill, Formal, N/A plans: coffee + arcades + gyms + movie theaters
+      // For Chill, Formal, N/A plans: diverse side quests with more variety
       const sideQuestTypes = [
-        { keyword: 'coffee bubble tea boba', type: 'cafe' },
-        { keyword: 'arcade game', type: 'amusement_center' },
-        { keyword: 'gym fitness', type: 'gym' },
-        { keyword: 'movie cinema', type: 'movie_theater' },
+        { keyword: 'coffee bubble tea boba cafe dessert', type: 'cafe' },
+        { keyword: 'arcade game center entertainment', type: null }, // No type for broader results
+        { keyword: 'gym fitness yoga pilates', type: 'gym' },
+        { keyword: 'movie cinema theater film', type: 'movie_theater' },
+        { keyword: 'bowling alley', type: null },
+        { keyword: 'ice cream gelato frozen yogurt', type: 'bakery' },
+        { keyword: 'bar drinks cocktails beer wine', type: 'bar' },
+        { keyword: 'bookstore library books', type: null },
       ];
 
       const sideQuestSearches = sideQuestTypes.map((quest) => {
         const request: google.maps.places.PlaceSearchRequest = {
           location: new google.maps.LatLng(location.lat, location.lng),
-          radius,
+          radius: 3000, // Use larger radius for better coverage
           keyword: quest.keyword,
-          type: quest.type,
+          ...(quest.type && { type: quest.type }), // Only add type if specified
         };
 
         return new Promise<Place[]>((resolve) => {
           service.nearbySearch(request, (results, status) => {
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-              // Map results and filter by side quest budget
-              const mappedPlaces = mapPlaceResults(results.slice(0, 5));
+              // Get more results per category for variety
+              const mappedPlaces = mapPlaceResults(results.slice(0, 8));
               const budgetFilteredPlaces = filterByPrice(mappedPlaces, sideQuestBudget);
               resolve(budgetFilteredPlaces);
             } else {
+              // Log failures for debugging but don't fail the entire search
+              console.warn(`Side quest search failed for ${quest.keyword}: ${status}`);
               resolve([]);
             }
           });
@@ -284,6 +290,9 @@ export function usePlanSearch() {
       // Combine all side quest results
       const allSideQuests = await Promise.all(sideQuestSearches);
       coffeeShops = allSideQuests.flat();
+
+      // Shuffle to ensure variety in distribution across plans
+      coffeeShops = coffeeShops.sort(() => Math.random() - 0.5);
     }
 
     // Generate plans from the search results
