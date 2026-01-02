@@ -15,6 +15,8 @@ import PlanCard from '@/components/PlanCard';
 import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
 import CuisineFilter from '@/components/CuisineFilter';
+import PriceFilter, { type PriceLevel } from '@/components/PriceFilter';
+import SideQuestBudgetFilter from '@/components/SideQuestBudgetFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
@@ -38,6 +40,8 @@ export default function Dashboard() {
   const [dining, setDining] = useState<string[]>([]);
   const [hangout, setHangout] = useState<string>('');
   const [cuisines, setCuisines] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<PriceLevel[]>([]);
+  const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
@@ -173,6 +177,8 @@ export default function Dashboard() {
         location: userLocation,
         planType,
         cuisines: cuisines.length > 0 ? cuisines : getUserPreferences().cuisines,
+        priceRange: priceRange.length > 0 ? priceRange : undefined,
+        sideQuestBudget: sideQuestBudget.length > 0 ? sideQuestBudget : undefined,
       });
 
       // Expand panel to show results
@@ -791,6 +797,14 @@ export default function Dashboard() {
               options={['Formal', 'Chill', 'Date', 'N/A']}
               value={hangout}
               onChange={(val) => setHangout(val as string)}
+            />
+            <PriceFilter
+              value={priceRange}
+              onChange={setPriceRange}
+            />
+            <SideQuestBudgetFilter
+              value={sideQuestBudget}
+              onChange={setSideQuestBudget}
             />
           </div>
         </div>
