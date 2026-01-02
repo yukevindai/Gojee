@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Star, Clock, DollarSign, MapPin, ArrowRight, Utensils, PartyPopper, Footprints, Bus, Car, Coffee, Gamepad2, Dumbbell, Film } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
+import PriceIndicator from './PriceIndicator';
 
 interface PlanCardProps {
   plan: Plan;
@@ -98,10 +99,7 @@ export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected 
             <Clock className="h-3 w-3" />
             <span>{formatDuration(plan.totalDuration)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <DollarSign className="h-3 w-3" />
-            <span>{getPriceSymbol(plan.estimatedCost)}</span>
-          </div>
+          <PriceIndicator level={plan.estimatedCost} size="sm" />
           <div className="flex items-center gap-1">
             {getDistanceIcon(plan.distanceCategory)}
             <span className="capitalize">{plan.distanceCategory} · {formatDistance(plan.distance)}</span>
@@ -139,6 +137,9 @@ export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected 
                         {step.place.rating.toFixed(1)}
                       </span>
                     </div>
+                  )}
+                  {step.place.priceLevel && (
+                    <PriceIndicator level={step.place.priceLevel} size="sm" />
                   )}
                   <div className="flex items-center gap-1 text-gray-600">
                     <Clock className="h-3 w-3" />

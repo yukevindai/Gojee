@@ -15,6 +15,8 @@ import PlanCard from '@/components/PlanCard';
 import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
 import CuisineFilter from '@/components/CuisineFilter';
+import PriceFilter, { type PriceLevel } from '@/components/PriceFilter';
+import SideQuestBudgetFilter from '@/components/SideQuestBudgetFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
@@ -38,6 +40,8 @@ export default function Dashboard() {
   const [dining, setDining] = useState<string[]>([]);
   const [hangout, setHangout] = useState<string>('');
   const [cuisines, setCuisines] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<PriceLevel[]>([]);
+  const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
@@ -173,6 +177,8 @@ export default function Dashboard() {
         location: userLocation,
         planType,
         cuisines: cuisines.length > 0 ? cuisines : getUserPreferences().cuisines,
+        priceRange: priceRange.length > 0 ? priceRange : undefined,
+        sideQuestBudget: sideQuestBudget.length > 0 ? sideQuestBudget : undefined,
       });
 
       // Expand panel to show results
@@ -638,6 +644,13 @@ export default function Dashboard() {
           disableDefaultUI={false}
           className="h-full w-full"
           styles={deemphasizedMapStyle}
+          clickableIcons={false}
+          keyboardShortcuts={false}
+          draggable={true}
+          scrollwheel={true}
+          zoomControl={true}
+          streetViewControl={false}
+          fullscreenControl={false}
         >
           {/* Place Markers - Conditional rendering based on selected plan */}
           {selectedPlan === null
@@ -738,11 +751,47 @@ export default function Dashboard() {
       </APIProvider>
 
       {/* Top Filters Overlay */}
-      <div className="absolute left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/95 via-white/80 to-transparent p-4 pb-8 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">GrassMaxxing</h1>
-            <div className="flex items-center gap-3">
+      <div className="absolute left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/95 via-white/80 to-transparent p-4 pb-8 backdrop-blur-sm pointer-events-none">
+        <div className="mx-auto max-w-7xl pointer-events-auto">
+          <div className="flex items-center justify-between gap-4">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+              <FilterDropdown
+                label="Party Size"
+                options={['2', '3', '4', '5', '6', '7', '8', '9+']}
+                value={partySize}
+                onChange={(val) => setPartySize(val as string)}
+              />
+              <FilterDropdown
+                label="Dining"
+                options={['Breakfast', 'Lunch', 'Dinner', 'Quick bite', 'Snack', 'Dessert']}
+                value={dining}
+                onChange={(val) => setDining(val as string[])}
+                multiSelect
+              />
+              <CuisineFilter
+                value={cuisines}
+                onChange={setCuisines}
+                usePreferences={getUserPreferences().cuisines.length > 0}
+              />
+              <FilterDropdown
+                label="Hangout"
+                options={['Formal', 'Chill', 'Date', 'N/A']}
+                value={hangout}
+                onChange={(val) => setHangout(val as string)}
+              />
+              <PriceFilter
+                value={priceRange}
+                onChange={setPriceRange}
+              />
+              <SideQuestBudgetFilter
+                value={sideQuestBudget}
+                onChange={setSideQuestBudget}
+              />
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex items-center gap-3 shrink-0">
               <Link
                 href="/library"
                 className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
@@ -759,39 +808,12 @@ export default function Dashboard() {
               </Link>
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-3">
-            <FilterDropdown
-              label="Party Size"
-              options={['2', '3', '4', '5', '6', '7', '8', '9+']}
-              value={partySize}
-              onChange={(val) => setPartySize(val as string)}
-            />
-            <FilterDropdown
-              label="Dining"
-              options={['Breakfast', 'Lunch', 'Dinner', 'Quick bite', 'Snack', 'Dessert']}
-              value={dining}
-              onChange={(val) => setDining(val as string[])}
-              multiSelect
-            />
-            <CuisineFilter
-              value={cuisines}
-              onChange={setCuisines}
-              usePreferences={getUserPreferences().cuisines.length > 0}
-            />
-            <FilterDropdown
-              label="Hangout"
-              options={['Formal', 'Chill', 'Date', 'N/A']}
-              value={hangout}
-              onChange={(val) => setHangout(val as string)}
-            />
-          </div>
         </div>
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white to-transparent p-4 pt-8 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl space-y-4">
+      <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white to-transparent p-4 pt-8 backdrop-blur-sm pointer-events-none">
+        <div className="mx-auto max-w-7xl space-y-4 pointer-events-auto">
           {/* QuickKey Buttons */}
           <div className="flex gap-3 overflow-x-auto">
             <QuickKeyButton

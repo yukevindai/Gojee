@@ -28,13 +28,26 @@ export function usePlanSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to filter places by price range
+  const filterByPrice = (places: Place[], priceRange?: number[]): Place[] => {
+    if (!priceRange || priceRange.length === 0) return places;
+
+    return places.filter(place => {
+      // If place has no price level, include it (better than excluding)
+      if (!place.priceLevel) return true;
+
+      // Check if place's price level is in the selected range
+      return priceRange.includes(place.priceLevel);
+    });
+  };
+
   // Helper function to perform search at a specific radius
   const performSearch = async (
     service: google.maps.places.PlacesService,
     filters: SearchFilters,
     radius: number
   ): Promise<Plan[]> => {
-    const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines } = filters;
+    const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines, priceRange, sideQuestBudget } = filters;
 
     // Get cuisine keywords for search
     const cuisineKeywords = cuisines && cuisines.length > 0 ? getCuisineKeywords(cuisines) : '';
@@ -90,7 +103,10 @@ export function usePlanSearch() {
               return types.some(type => validFoodTypes.includes(type));
             });
 
-            resolve(mapPlaceResults(filteredResults.slice(0, 20)));
+            // Map results and filter by price
+            const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
+            const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
+            resolve(priceFilteredPlaces);
           } else {
             reject(new Error(`${mealType} search failed: ${status}`));
           }
@@ -150,7 +166,10 @@ export function usePlanSearch() {
               return types.some(type => validFoodTypes.includes(type));
             });
 
-            resolve(mapPlaceResults(filteredResults.slice(0, 20)));
+            // Map results and filter by price
+            const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
+            const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
+            resolve(priceFilteredPlaces);
           } else {
             reject(new Error(`Dining search failed: ${status}`));
           }
@@ -190,7 +209,10 @@ export function usePlanSearch() {
             return hasValidActivity || types.includes('point_of_interest');
           });
 
-          resolve(mapPlaceResults(filteredResults.slice(0, 20)));
+          // Map results and filter by price
+          const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
+          const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
+          resolve(priceFilteredPlaces);
         } else {
           reject(new Error(`Hangout search failed: ${status}`));
         }
@@ -214,7 +236,10 @@ export function usePlanSearch() {
         service.nearbySearch(coffeeRequest, (results, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && results) {
             // Get more results for Date Night - need enough for 5 plans with 2+ each
-            resolve(mapPlaceResults(results.slice(0, 30)));
+            // Map results and filter by side quest budget
+            const mappedPlaces = mapPlaceResults(results.slice(0, 30));
+            const budgetFilteredPlaces = filterByPrice(mappedPlaces, sideQuestBudget);
+            resolve(budgetFilteredPlaces);
           } else {
             resolve([]);
           }
@@ -240,7 +265,10 @@ export function usePlanSearch() {
         return new Promise<Place[]>((resolve) => {
           service.nearbySearch(request, (results, status) => {
             if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-              resolve(mapPlaceResults(results.slice(0, 5)));
+              // Map results and filter by side quest budget
+              const mappedPlaces = mapPlaceResults(results.slice(0, 5));
+              const budgetFilteredPlaces = filterByPrice(mappedPlaces, sideQuestBudget);
+              resolve(budgetFilteredPlaces);
             } else {
               resolve([]);
             }

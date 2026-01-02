@@ -24,6 +24,8 @@ export interface SearchFilters {
   };
   planType?: 'morning' | 'afternoon' | 'fullday' | 'single';
   cuisines?: string[]; // cuisine IDs
+  priceRange?: number[]; // price levels 1-4
+  sideQuestBudget?: number[]; // price levels for optional stops
 }
 
 export function getPlaceType(diningOptions: string[]): string[] {
