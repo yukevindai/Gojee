@@ -638,6 +638,13 @@ export default function Dashboard() {
           disableDefaultUI={false}
           className="h-full w-full"
           styles={deemphasizedMapStyle}
+          clickableIcons={false}
+          keyboardShortcuts={false}
+          draggable={true}
+          scrollwheel={true}
+          zoomControl={true}
+          streetViewControl={false}
+          fullscreenControl={false}
         >
           {/* Place Markers - Conditional rendering based on selected plan */}
           {selectedPlan === null
@@ -738,8 +745,8 @@ export default function Dashboard() {
       </APIProvider>
 
       {/* Top Filters Overlay */}
-      <div className="absolute left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/95 via-white/80 to-transparent p-4 pb-8 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl">
+      <div className="absolute left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/95 via-white/80 to-transparent p-4 pb-8 backdrop-blur-sm pointer-events-none">
+        <div className="mx-auto max-w-7xl pointer-events-auto">
           <div className="mb-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">GrassMaxxing</h1>
             <div className="flex items-center gap-3">
@@ -790,8 +797,8 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white to-transparent p-4 pt-8 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl space-y-4">
+      <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-white via-white to-transparent p-4 pt-8 backdrop-blur-sm pointer-events-none">
+        <div className="mx-auto max-w-7xl space-y-4 pointer-events-auto">
           {/* QuickKey Buttons */}
           <div className="flex gap-3 overflow-x-auto">
             <QuickKeyButton
