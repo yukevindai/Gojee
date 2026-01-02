@@ -502,6 +502,7 @@ function DashboardContent() {
         location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
         radius: 3000, // Increased radius for activities
         keyword: searchKeyword,
+        type: searchType as any, // Add type parameter for better results
       };
 
       service.nearbySearch(request, (results, status) => {
@@ -513,11 +514,32 @@ function DashboardContent() {
           ]);
 
           const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+          const validFoodTypes = [
+            'restaurant', 'cafe', 'bar', 'food', 'bakery',
+            'meal_takeaway', 'meal_delivery', 'fast_food'
+          ];
+          const validActivityTypes = [
+            'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
+            'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
+            'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
+            'night_club', 'library', 'arcade', 'theater', 'performing_arts_theater'
+          ];
+
           const availableResults = results.filter(result => {
             const placeId = result.place_id || '';
             const types = result.types || [];
             const hasLodging = types.some(type => excludedTypes.includes(type));
-            return !usedPlaceIds.has(placeId) && !hasLodging;
+
+            // Skip if already used or is lodging
+            if (usedPlaceIds.has(placeId) || hasLodging) return false;
+
+            // For dining searches, ensure it has valid food types
+            if (isDining) {
+              return types.some(type => validFoodTypes.includes(type));
+            }
+
+            // For activity searches, ensure it has valid activity types
+            return types.some(type => validActivityTypes.includes(type)) || types.includes('point_of_interest');
           });
 
           if (availableResults.length === 0) {
