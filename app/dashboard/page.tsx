@@ -115,53 +115,68 @@ function DashboardContent() {
 
   // Handle saved plan loading from URL
   useEffect(() => {
-    const savedPlanId = searchParams.get('savedPlan');
-    const mode = searchParams.get('mode');
+    // Only run on client side
+    if (typeof window === 'undefined') return;
 
-    if (savedPlanId) {
-      const savedPlan = getSavedPlanById(savedPlanId);
+    try {
+      const savedPlanId = searchParams.get('savedPlan');
+      const mode = searchParams.get('mode');
 
-      if (savedPlan) {
-        // Set the plan as modified plan
-        setModifiedPlan(savedPlan.plan);
-        setSelectedPlan(savedPlan.plan.id);
+      if (savedPlanId) {
+        const savedPlan = getSavedPlanById(savedPlanId);
 
-        // Set execution mode based on the mode parameter
-        if (mode === 'start') {
-          setExecutionMode('stepByStep');
-          setCurrentStepIndex(0);
-          setIsPanelExpanded(false);
-        } else if (mode === 'view') {
-          setExecutionMode('summary');
-          setIsPanelExpanded(false);
-        } else if (mode === 'edit') {
-          setExecutionMode('summary');
-          setIsEditingMode(true);
-          setOriginalPlanBeforeEdit(savedPlan.plan);
-          setIsPanelExpanded(false);
+        if (savedPlan) {
+          // Set the plan as modified plan
+          setModifiedPlan(savedPlan.plan);
+          setSelectedPlan(savedPlan.plan.id);
+
+          // Set execution mode based on the mode parameter
+          if (mode === 'start') {
+            setExecutionMode('stepByStep');
+            setCurrentStepIndex(0);
+            setIsPanelExpanded(false);
+          } else if (mode === 'view') {
+            setExecutionMode('summary');
+            setIsPanelExpanded(false);
+          } else if (mode === 'edit') {
+            setExecutionMode('summary');
+            setIsEditingMode(true);
+            setOriginalPlanBeforeEdit(savedPlan.plan);
+            setIsPanelExpanded(false);
+          }
+
+          // Center map on the plan's location if available
+          if (savedPlan.plan.steps && savedPlan.plan.steps.length > 0) {
+            const firstStep = savedPlan.plan.steps[0];
+            if (firstStep && firstStep.place && firstStep.place.location) {
+              setUserLocation({
+                lat: firstStep.place.location.lat,
+                lng: firstStep.place.location.lng,
+              });
+            }
+          }
         }
+      }
 
-        // Center map on the plan's location if available
-        if (savedPlan.plan.steps.length > 0) {
-          const firstStep = savedPlan.plan.steps[0];
+      // Handle direct location view from Places
+      const lat = searchParams.get('lat');
+      const lng = searchParams.get('lng');
+
+      if (lat && lng) {
+        const parsedLat = parseFloat(lat);
+        const parsedLng = parseFloat(lng);
+
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
           setUserLocation({
-            lat: firstStep.place.location.lat,
-            lng: firstStep.place.location.lng,
+            lat: parsedLat,
+            lng: parsedLng,
           });
         }
       }
+    } catch (error) {
+      console.error('Error loading saved plan:', error);
     }
-
-    // Handle direct location view from Places
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('lng');
-
-    if (lat && lng) {
-      setUserLocation({
-        lat: parseFloat(lat),
-        lng: parseFloat(lng),
-      });
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Check if any filter or quickkey is selected
@@ -1044,8 +1059,9 @@ function DashboardContent() {
       {/* Plan Summary Panel */}
       <AnimatePresence>
         {executionMode === 'summary' && selectedPlan && modifiedPlan && (() => {
+          // Find plan index in search results, or use 0 for saved plans not in search
           const planIndex = plans.findIndex(p => p.id === selectedPlan);
-          const colorScheme = getColorSchemeForIndex(planIndex);
+          const colorScheme = getColorSchemeForIndex(planIndex >= 0 ? planIndex : 0);
 
           return (
             <PlanSummaryPanel
@@ -1070,8 +1086,9 @@ function DashboardContent() {
 
       {/* Step-by-Step Mode */}
       {executionMode === 'stepByStep' && selectedPlan && modifiedPlan && (() => {
+        // Find plan index in search results, or use 0 for saved plans not in search
         const planIndex = plans.findIndex(p => p.id === selectedPlan);
-        const colorScheme = getColorSchemeForIndex(planIndex);
+        const colorScheme = getColorSchemeForIndex(planIndex >= 0 ? planIndex : 0);
 
         return (
           <StepByStepMode
