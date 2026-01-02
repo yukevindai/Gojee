@@ -178,11 +178,11 @@ export function usePlanSearch() {
     }
 
     // Search for hangout places with broader keywords
-    const hangoutTypes = getHangoutPlaceTypes(hangout);
+    // Use keyword-only search (no type restriction) for maximum flexibility
     const hangoutRequest: google.maps.places.PlaceSearchRequest = {
       location: new google.maps.LatLng(location.lat, location.lng),
-      radius,
-      keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo',
+      radius: 3000, // Use larger radius for activities (3km)
+      keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery',
     };
 
     const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
@@ -213,6 +213,11 @@ export function usePlanSearch() {
           const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
           const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
           resolve(priceFilteredPlaces);
+        } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+          // If no results found, resolve with empty array instead of rejecting
+          // This allows the plan generation to continue without hangout places
+          console.warn('No hangout places found in area, continuing without activities');
+          resolve([]);
         } else {
           reject(new Error(`Hangout search failed: ${status}`));
         }

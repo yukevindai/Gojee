@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { APIProvider, Map } from '@vis.gl/react-google-maps';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
@@ -27,8 +27,13 @@ import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
 import type { Plan } from '@/lib/planGenerator';
 import { getUserPreferences, isOnboardingComplete } from '@/lib/userPreferences';
+import { getSavedPlanById } from '@/lib/savedPlans';
+import { useSearchParams } from 'next/navigation';
 
-export default function Dashboard() {
+function DashboardContent() {
+  // URL search params
+  const searchParams = useSearchParams();
+
   // Geolocation state
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({
     lat: 37.7749, // Default to San Francisco
@@ -107,6 +112,72 @@ export default function Dashboard() {
       setCuisines(preferences.cuisines);
     }
   }, []);
+
+  // Handle saved plan loading from URL
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+
+    try {
+      const savedPlanId = searchParams.get('savedPlan');
+      const mode = searchParams.get('mode');
+
+      if (savedPlanId) {
+        const savedPlan = getSavedPlanById(savedPlanId);
+
+        if (savedPlan) {
+          // Set the plan as modified plan
+          setModifiedPlan(savedPlan.plan);
+          setSelectedPlan(savedPlan.plan.id);
+
+          // Set execution mode based on the mode parameter
+          if (mode === 'start') {
+            setExecutionMode('stepByStep');
+            setCurrentStepIndex(0);
+            setIsPanelExpanded(false);
+          } else if (mode === 'view') {
+            setExecutionMode('summary');
+            setIsPanelExpanded(false);
+          } else if (mode === 'edit') {
+            setExecutionMode('summary');
+            setIsEditingMode(true);
+            setOriginalPlanBeforeEdit(savedPlan.plan);
+            setIsPanelExpanded(false);
+          }
+
+          // Center map on the plan's location if available
+          if (savedPlan.plan.steps && savedPlan.plan.steps.length > 0) {
+            const firstStep = savedPlan.plan.steps[0];
+            if (firstStep && firstStep.place && firstStep.place.location) {
+              setUserLocation({
+                lat: firstStep.place.location.lat,
+                lng: firstStep.place.location.lng,
+              });
+            }
+          }
+        }
+      }
+
+      // Handle direct location view from Places
+      const lat = searchParams.get('lat');
+      const lng = searchParams.get('lng');
+
+      if (lat && lng) {
+        const parsedLat = parseFloat(lat);
+        const parsedLng = parseFloat(lng);
+
+        if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+          setUserLocation({
+            lat: parsedLat,
+            lng: parsedLng,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved plan:', error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Check if any filter or quickkey is selected
   const hasSelection =
@@ -431,6 +502,7 @@ export default function Dashboard() {
         location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
         radius: 3000, // Increased radius for activities
         keyword: searchKeyword,
+        type: searchType as any, // Add type parameter for better results
       };
 
       service.nearbySearch(request, (results, status) => {
@@ -442,11 +514,32 @@ export default function Dashboard() {
           ]);
 
           const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+          const validFoodTypes = [
+            'restaurant', 'cafe', 'bar', 'food', 'bakery',
+            'meal_takeaway', 'meal_delivery', 'fast_food'
+          ];
+          const validActivityTypes = [
+            'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
+            'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
+            'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
+            'night_club', 'library', 'arcade', 'theater', 'performing_arts_theater'
+          ];
+
           const availableResults = results.filter(result => {
             const placeId = result.place_id || '';
             const types = result.types || [];
             const hasLodging = types.some(type => excludedTypes.includes(type));
-            return !usedPlaceIds.has(placeId) && !hasLodging;
+
+            // Skip if already used or is lodging
+            if (usedPlaceIds.has(placeId) || hasLodging) return false;
+
+            // For dining searches, ensure it has valid food types
+            if (isDining) {
+              return types.some(type => validFoodTypes.includes(type));
+            }
+
+            // For activity searches, ensure it has valid activity types
+            return types.some(type => validActivityTypes.includes(type)) || types.includes('point_of_interest');
           });
 
           if (availableResults.length === 0) {
@@ -988,8 +1081,9 @@ export default function Dashboard() {
       {/* Plan Summary Panel */}
       <AnimatePresence>
         {executionMode === 'summary' && selectedPlan && modifiedPlan && (() => {
+          // Find plan index in search results, or use 0 for saved plans not in search
           const planIndex = plans.findIndex(p => p.id === selectedPlan);
-          const colorScheme = getColorSchemeForIndex(planIndex);
+          const colorScheme = getColorSchemeForIndex(planIndex >= 0 ? planIndex : 0);
 
           return (
             <PlanSummaryPanel
@@ -1014,8 +1108,9 @@ export default function Dashboard() {
 
       {/* Step-by-Step Mode */}
       {executionMode === 'stepByStep' && selectedPlan && modifiedPlan && (() => {
+        // Find plan index in search results, or use 0 for saved plans not in search
         const planIndex = plans.findIndex(p => p.id === selectedPlan);
-        const colorScheme = getColorSchemeForIndex(planIndex);
+        const colorScheme = getColorSchemeForIndex(planIndex >= 0 ? planIndex : 0);
 
         return (
           <StepByStepMode
@@ -1052,5 +1147,13 @@ export default function Dashboard() {
         />
       )}
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

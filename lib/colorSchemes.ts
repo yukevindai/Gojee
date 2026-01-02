@@ -78,5 +78,7 @@ export const colorSchemes: Record<ColorScheme, ColorConfig> = {
 
 export const getColorSchemeForIndex = (index: number): ColorScheme => {
   const schemes: ColorScheme[] = ['orange', 'purple', 'green', 'blue', 'pink'];
-  return schemes[index % schemes.length];
+  // Handle negative indices by using absolute value or defaulting to 0
+  const safeIndex = index >= 0 ? index : 0;
+  return schemes[safeIndex % schemes.length];
 };
