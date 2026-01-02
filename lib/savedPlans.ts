@@ -80,6 +80,11 @@ export function isPlanSaved(planId: string): boolean {
   return savedPlans.some(sp => sp.plan.id === planId);
 }
 
+export function getSavedPlanById(savedPlanId: string): SavedPlan | null {
+  const savedPlans = getSavedPlans();
+  return savedPlans.find(sp => sp.id === savedPlanId) || null;
+}
+
 export function deleteSavedPlan(savedPlanId: string): boolean {
   const savedPlans = getSavedPlans();
   const filteredPlans = savedPlans.filter(sp => sp.id !== savedPlanId);

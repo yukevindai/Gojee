@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { APIProvider, Map } from '@vis.gl/react-google-maps';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
@@ -27,8 +27,13 @@ import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
 import type { Plan } from '@/lib/planGenerator';
 import { getUserPreferences, isOnboardingComplete } from '@/lib/userPreferences';
+import { getSavedPlanById } from '@/lib/savedPlans';
+import { useSearchParams } from 'next/navigation';
 
-export default function Dashboard() {
+function DashboardContent() {
+  // URL search params
+  const searchParams = useSearchParams();
+
   // Geolocation state
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({
     lat: 37.7749, // Default to San Francisco
@@ -107,6 +112,57 @@ export default function Dashboard() {
       setCuisines(preferences.cuisines);
     }
   }, []);
+
+  // Handle saved plan loading from URL
+  useEffect(() => {
+    const savedPlanId = searchParams.get('savedPlan');
+    const mode = searchParams.get('mode');
+
+    if (savedPlanId) {
+      const savedPlan = getSavedPlanById(savedPlanId);
+
+      if (savedPlan) {
+        // Set the plan as modified plan
+        setModifiedPlan(savedPlan.plan);
+        setSelectedPlan(savedPlan.plan.id);
+
+        // Set execution mode based on the mode parameter
+        if (mode === 'start') {
+          setExecutionMode('stepByStep');
+          setCurrentStepIndex(0);
+          setIsPanelExpanded(false);
+        } else if (mode === 'view') {
+          setExecutionMode('summary');
+          setIsPanelExpanded(false);
+        } else if (mode === 'edit') {
+          setExecutionMode('summary');
+          setIsEditingMode(true);
+          setOriginalPlanBeforeEdit(savedPlan.plan);
+          setIsPanelExpanded(false);
+        }
+
+        // Center map on the plan's location if available
+        if (savedPlan.plan.steps.length > 0) {
+          const firstStep = savedPlan.plan.steps[0];
+          setUserLocation({
+            lat: firstStep.place.location.lat,
+            lng: firstStep.place.location.lng,
+          });
+        }
+      }
+    }
+
+    // Handle direct location view from Places
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+
+    if (lat && lng) {
+      setUserLocation({
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+      });
+    }
+  }, [searchParams]);
 
   // Check if any filter or quickkey is selected
   const hasSelection =
@@ -1052,5 +1108,13 @@ export default function Dashboard() {
         />
       )}
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

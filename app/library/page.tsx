@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, MapPin, Star, Heart, ChevronLeft } from 'lucide-react';
-import { getSavedPlans, type SavedPlan } from '@/lib/savedPlans';
-import { getSavedLocations, type SavedLocation } from '@/lib/savedLocations';
+import { getSavedPlans, unsavePlan, type SavedPlan } from '@/lib/savedPlans';
+import { getSavedLocations, unsaveLocation, type SavedLocation } from '@/lib/savedLocations';
 
 type Tab = 'plans' | 'places';
 
@@ -17,9 +17,13 @@ export default function LibraryPage() {
 
   useEffect(() => {
     // Load saved plans and locations
+    loadSavedData();
+  }, []);
+
+  const loadSavedData = () => {
     setSavedPlans(getSavedPlans());
     setSavedLocations(getSavedLocations());
-  }, []);
+  };
 
   const filteredLocations = savedLocations.filter(loc => {
     if (locationFilter === 'all') return true;
@@ -35,6 +39,41 @@ export default function LibraryPage() {
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Plan action handlers
+  const handleViewPlan = (savedPlanId: string) => {
+    router.push(`/dashboard?savedPlan=${savedPlanId}&mode=view`);
+  };
+
+  const handleStartPlan = (savedPlanId: string) => {
+    router.push(`/dashboard?savedPlan=${savedPlanId}&mode=start`);
+  };
+
+  const handleEditPlan = (savedPlanId: string) => {
+    router.push(`/dashboard?savedPlan=${savedPlanId}&mode=edit`);
+  };
+
+  const handleUnsavePlan = (planId: string) => {
+    if (unsavePlan(planId)) {
+      loadSavedData();
+    }
+  };
+
+  // Location action handlers
+  const handleViewOnMap = (place: SavedLocation['place']) => {
+    const params = new URLSearchParams({
+      lat: place.location.lat.toString(),
+      lng: place.location.lng.toString(),
+      zoom: '16'
+    });
+    router.push(`/dashboard?${params.toString()}`);
+  };
+
+  const handleUnsaveLocation = (placeId: string) => {
+    if (unsaveLocation(placeId)) {
+      loadSavedData();
+    }
   };
 
   return (
@@ -128,18 +167,33 @@ export default function LibraryPage() {
                       </div>
                     </div>
 
-                    <Heart className="h-5 w-5 text-red-500 fill-current shrink-0" />
+                    <button
+                      onClick={() => handleUnsavePlan(savedPlan.plan.id)}
+                      className="shrink-0 hover:scale-110 transition-transform"
+                      aria-label="Unsave plan"
+                    >
+                      <Heart className="h-5 w-5 text-red-500 fill-current" />
+                    </button>
                   </div>
 
                   {/* Actions */}
                   <div className="grid grid-cols-3 gap-2 mt-4">
-                    <button className="flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg py-2 px-4 text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <button
+                      onClick={() => handleViewPlan(savedPlan.id)}
+                      className="flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg py-2 px-4 text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
                       View
                     </button>
-                    <button className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 rounded-lg py-2 px-4 text-sm font-medium hover:bg-gray-200 transition-colors">
+                    <button
+                      onClick={() => handleStartPlan(savedPlan.id)}
+                      className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 rounded-lg py-2 px-4 text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
                       Start
                     </button>
-                    <button className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 rounded-lg py-2 px-4 text-sm font-medium hover:bg-gray-200 transition-colors">
+                    <button
+                      onClick={() => handleEditPlan(savedPlan.id)}
+                      className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 rounded-lg py-2 px-4 text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
                       Edit
                     </button>
                   </div>
@@ -207,15 +261,28 @@ export default function LibraryPage() {
                         </div>
                       </div>
 
-                      <Heart className="h-5 w-5 text-red-500 fill-current shrink-0" />
+                      <button
+                        onClick={() => handleUnsaveLocation(savedLoc.place.id)}
+                        className="shrink-0 hover:scale-110 transition-transform"
+                        aria-label="Unsave location"
+                      >
+                        <Heart className="h-5 w-5 text-red-500 fill-current" />
+                      </button>
                     </div>
 
                     {/* Actions */}
                     <div className="grid grid-cols-2 gap-2 mt-3">
-                      <button className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 rounded-lg py-2 px-3 text-sm font-medium hover:bg-blue-100 transition-colors">
+                      <button
+                        onClick={() => handleViewOnMap(savedLoc.place)}
+                        className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 rounded-lg py-2 px-3 text-sm font-medium hover:bg-blue-100 transition-colors"
+                      >
                         View on map
                       </button>
-                      <button className="flex items-center justify-center gap-2 bg-gray-50 text-gray-700 rounded-lg py-2 px-3 text-sm font-medium hover:bg-gray-100 transition-colors">
+                      <button
+                        disabled
+                        className="flex items-center justify-center gap-2 bg-gray-50 text-gray-400 rounded-lg py-2 px-3 text-sm font-medium cursor-not-allowed"
+                        title="Coming soon"
+                      >
                         Add to plan
                       </button>
                     </div>
