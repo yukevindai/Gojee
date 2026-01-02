@@ -753,9 +753,45 @@ export default function Dashboard() {
       {/* Top Filters Overlay */}
       <div className="absolute left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/95 via-white/80 to-transparent p-4 pb-8 backdrop-blur-sm pointer-events-none">
         <div className="mx-auto max-w-7xl pointer-events-auto">
-          <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">GrassMaxxing</h1>
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+              <FilterDropdown
+                label="Party Size"
+                options={['2', '3', '4', '5', '6', '7', '8', '9+']}
+                value={partySize}
+                onChange={(val) => setPartySize(val as string)}
+              />
+              <FilterDropdown
+                label="Dining"
+                options={['Breakfast', 'Lunch', 'Dinner', 'Quick bite', 'Snack', 'Dessert']}
+                value={dining}
+                onChange={(val) => setDining(val as string[])}
+                multiSelect
+              />
+              <CuisineFilter
+                value={cuisines}
+                onChange={setCuisines}
+                usePreferences={getUserPreferences().cuisines.length > 0}
+              />
+              <FilterDropdown
+                label="Hangout"
+                options={['Formal', 'Chill', 'Date', 'N/A']}
+                value={hangout}
+                onChange={(val) => setHangout(val as string)}
+              />
+              <PriceFilter
+                value={priceRange}
+                onChange={setPriceRange}
+              />
+              <SideQuestBudgetFilter
+                value={sideQuestBudget}
+                onChange={setSideQuestBudget}
+              />
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex items-center gap-3 shrink-0">
               <Link
                 href="/library"
                 className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
@@ -771,41 +807,6 @@ export default function Dashboard() {
                 Home
               </Link>
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <FilterDropdown
-              label="Party Size"
-              options={['2', '3', '4', '5', '6', '7', '8', '9+']}
-              value={partySize}
-              onChange={(val) => setPartySize(val as string)}
-            />
-            <FilterDropdown
-              label="Dining"
-              options={['Breakfast', 'Lunch', 'Dinner', 'Quick bite', 'Snack', 'Dessert']}
-              value={dining}
-              onChange={(val) => setDining(val as string[])}
-              multiSelect
-            />
-            <CuisineFilter
-              value={cuisines}
-              onChange={setCuisines}
-              usePreferences={getUserPreferences().cuisines.length > 0}
-            />
-            <FilterDropdown
-              label="Hangout"
-              options={['Formal', 'Chill', 'Date', 'N/A']}
-              value={hangout}
-              onChange={(val) => setHangout(val as string)}
-            />
-            <PriceFilter
-              value={priceRange}
-              onChange={setPriceRange}
-            />
-            <SideQuestBudgetFilter
-              value={sideQuestBudget}
-              onChange={setSideQuestBudget}
-            />
           </div>
         </div>
       </div>
