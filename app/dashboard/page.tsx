@@ -8,6 +8,9 @@ import Link from 'next/link';
 import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
 import PlaceMarker from '@/components/PlaceMarker';
+import NumberedMarker from '@/components/NumberedMarker';
+import RoutePolyline from '@/components/RoutePolyline';
+import MapBoundsController from '@/components/MapBoundsController';
 import PlanCard from '@/components/PlanCard';
 import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
@@ -15,8 +18,10 @@ import CuisineFilter from '@/components/CuisineFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
-import { Sparkles, Home, Loader2, ChevronRight, X } from 'lucide-react';
+import { useMapBounds } from '@/hooks/useMapBounds';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
+import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
 import type { Plan } from '@/lib/planGenerator';
 import { getUserPreferences, isOnboardingComplete } from '@/lib/userPreferences';
@@ -254,11 +259,29 @@ export default function Dashboard() {
   };
 
   const handleSwapRestaurant = () => {
-    alert('Swap restaurant feature coming soon!');
+    if (!modifiedPlan) return;
+
+    // Find the first dining step
+    const restaurantIndex = modifiedPlan.steps.findIndex(step => step.type === 'dining');
+
+    if (restaurantIndex !== -1) {
+      handleSwapStep(restaurantIndex);
+    } else {
+      alert('No restaurant found in this plan.');
+    }
   };
 
   const handleSwapActivity = () => {
-    alert('Swap activity feature coming soon!');
+    if (!modifiedPlan) return;
+
+    // Find the first non-dining step (activity/hangout)
+    const activityIndex = modifiedPlan.steps.findIndex(step => step.type === 'hangout');
+
+    if (activityIndex !== -1) {
+      handleSwapStep(activityIndex);
+    } else {
+      alert('No activity found in this plan.');
+    }
   };
 
   const handleRegenerate = () => {
@@ -268,6 +291,97 @@ export default function Dashboard() {
     handleConfirm(); // Re-run the search
   };
 
+  // Instant shuffle - picks a random alternative and swaps immediately
+  const handleShuffleStep = async (stepIndex: number) => {
+    if (!modifiedPlan) return;
+
+    const step = modifiedPlan.steps[stepIndex];
+    const isDining = step.type === 'dining';
+
+    try {
+      const tempDiv = document.createElement('div');
+      const service = new google.maps.places.PlacesService(tempDiv);
+
+      let searchType: string;
+      let searchKeyword: string;
+
+      if (isDining) {
+        if (stepIndex === 0) {
+          searchType = 'restaurant';
+          searchKeyword = 'breakfast brunch cafe';
+        } else if (stepIndex === modifiedPlan.steps.length - 1) {
+          searchType = 'restaurant';
+          searchKeyword = 'dinner restaurant';
+        } else {
+          searchType = 'restaurant';
+          searchKeyword = 'lunch restaurant';
+        }
+      } else {
+        // For activities - use broader search with specific activity types
+        searchType = 'tourist_attraction';
+        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction';
+      }
+
+      const request: google.maps.places.PlaceSearchRequest = {
+        location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
+        radius: 3000, // Increased radius for activities
+        keyword: searchKeyword,
+      };
+
+      service.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          const usedPlaceIds = new Set([
+            ...modifiedPlan.steps.map(s => s.place.id),
+            ...(modifiedPlan.sideQuests || []).map(sq => sq.place.id)
+          ]);
+
+          const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+          const availableResults = results.filter(result => {
+            const placeId = result.place_id || '';
+            const types = result.types || [];
+            const hasLodging = types.some(type => excludedTypes.includes(type));
+            return !usedPlaceIds.has(placeId) && !hasLodging;
+          });
+
+          if (availableResults.length === 0) {
+            alert('No alternative venues found nearby.');
+            return;
+          }
+
+          // Pick a random alternative from the first 5
+          const randomIndex = Math.floor(Math.random() * Math.min(5, availableResults.length));
+          const newResult = availableResults[randomIndex];
+
+          const newPlace: Place = {
+            id: newResult.place_id || '',
+            name: newResult.name || 'Unknown',
+            address: newResult.vicinity || 'No address',
+            rating: newResult.rating,
+            userRatingsTotal: newResult.user_ratings_total,
+            priceLevel: newResult.price_level,
+            location: {
+              lat: newResult.geometry?.location?.lat() || 0,
+              lng: newResult.geometry?.location?.lng() || 0,
+            },
+            types: newResult.types,
+            openNow: newResult.opening_hours?.open_now,
+          };
+
+          // Immediately update the plan
+          const updatedSteps = [...modifiedPlan.steps];
+          updatedSteps[stepIndex] = { ...step, place: newPlace };
+          setModifiedPlan({ ...modifiedPlan, steps: updatedSteps });
+        } else {
+          alert('No alternative venues found.');
+        }
+      });
+    } catch (error) {
+      console.error('Error shuffling step:', error);
+      alert('Failed to shuffle venue.');
+    }
+  };
+
+  // Editing mode swap - shows alternatives with preview
   const handleSwapStep = async (stepIndex: number) => {
     if (!modifiedPlan) return;
 
@@ -302,17 +416,14 @@ export default function Dashboard() {
           searchKeyword = 'lunch restaurant';
         }
       } else {
-        // For hangout/activity
-        searchType = 'point_of_interest';
-        searchKeyword = hangout === 'Date' ? 'romantic activity entertainment' :
-                        hangout === 'Formal' ? 'upscale entertainment' :
-                        'fun activity entertainment';
+        // For activities - use broader search with specific activity types
+        searchType = 'tourist_attraction';
+        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction';
       }
 
       const request: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(step.place.location.lat, step.place.location.lng),
-        radius: 2000, // Search within 2km of the current venue
-        type: searchType,
+        radius: 3000, // Increased radius for activities
         keyword: searchKeyword,
       };
 
@@ -526,6 +637,7 @@ export default function Dashboard() {
           gestureHandling="greedy"
           disableDefaultUI={false}
           className="h-full w-full"
+          styles={deemphasizedMapStyle}
         >
           {/* Place Markers - Conditional rendering based on selected plan */}
           {selectedPlan === null
@@ -569,35 +681,57 @@ export default function Dashboard() {
                     const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
                     const colorScheme = getColorSchemeForIndex(actualIndex);
                     const colors = colorSchemes[colorScheme];
-                    const markers = [
-                      // Main plan steps
-                      ...modifiedPlan.steps.map((step) => (
-                        <PlaceMarker
-                          key={`${modifiedPlan.id}-${step.place.id}`}
+
+                    // Collect all places for bounds fitting
+                    const allPlaces = [
+                      ...modifiedPlan.steps.map(s => s.place),
+                      ...(modifiedPlan.sideQuests || []).map(sq => sq.place)
+                    ];
+
+                    const components = [
+                      // Auto-fit map bounds to show all locations
+                      <MapBoundsController key="bounds" places={allPlaces} />,
+
+                      // Route polyline connecting main steps
+                      <RoutePolyline
+                        key="route"
+                        places={modifiedPlan.steps.map(s => s.place)}
+                        color={colors.pinColor}
+                        opacity={0.7}
+                        strokeWeight={4}
+                      />,
+
+                      // Numbered markers for main plan steps
+                      ...modifiedPlan.steps.map((step, idx) => (
+                        <NumberedMarker
+                          key={`${modifiedPlan.id}-step-${idx}`}
                           place={step.place}
+                          number={idx + 1}
+                          type={step.type === 'dining' ? 'restaurant' : 'activity'}
                           onClick={() => console.log('Selected place:', step.place.name)}
-                          backgroundColor={colors.pinColor}
-                          borderColor={colors.pinBorder}
+                          isEditing={isEditingMode && editingStepIndex === idx}
+                          isCurrentStep={executionMode === 'stepByStep' && currentStepIndex === idx}
+                          isDimmed={isEditingMode && editingStepIndex !== null && editingStepIndex !== idx}
                         />
                       )),
                     ];
 
-                    // Add side quest markers if they exist
+                    // Add optional stop markers (side quests)
                     if (modifiedPlan.sideQuests && modifiedPlan.sideQuests.length > 0) {
-                      modifiedPlan.sideQuests.forEach((quest) => {
-                        markers.push(
-                          <PlaceMarker
-                            key={`${modifiedPlan.id}-sidequest-${quest.place.id}`}
+                      modifiedPlan.sideQuests.forEach((quest, idx) => {
+                        components.push(
+                          <NumberedMarker
+                            key={`${modifiedPlan.id}-sidequest-${idx}`}
                             place={quest.place}
+                            number={modifiedPlan.steps.length + idx + 1}
+                            type="optional"
                             onClick={() => console.log('Side quest:', quest.place.name)}
-                            backgroundColor="#F59E0B" // amber-500
-                            borderColor="#D97706" // amber-600
                           />
                         );
                       });
                     }
 
-                    return markers;
+                    return components;
                   })()
                 : []}
         </Map>
@@ -608,13 +742,22 @@ export default function Dashboard() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-4 flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">GrassMaxxing</h1>
-            <Link
-              href="/"
-              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
-            >
-              <Home className="h-4 w-4" />
-              Home
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/library"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+              >
+                <Heart className="h-4 w-4" />
+                Saved
+              </Link>
+              <Link
+                href="/"
+                className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+              >
+                <Home className="h-4 w-4" />
+                Home
+              </Link>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -836,6 +979,7 @@ export default function Dashboard() {
               onSwapActivity={handleSwapActivity}
               onRegenerate={handleRegenerate}
               onSwapStep={handleSwapStep}
+              onShuffleStep={handleShuffleStep}
               onSwapSideQuest={handleSwapSideQuest}
               isEditingMode={isEditingMode}
               editingStepIndex={editingStepIndex}

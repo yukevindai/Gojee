@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -8,7 +9,7 @@ import {
   Navigation,
   Star,
   Share2,
-  Bookmark,
+  Heart,
   RefreshCw,
   Shuffle,
   PlayCircle,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
+import { savePlan, unsavePlan, isPlanSaved } from '@/lib/savedPlans';
 
 interface PlanSummaryPanelProps {
   plan: Plan;
@@ -28,6 +30,7 @@ interface PlanSummaryPanelProps {
   onSwapActivity: () => void;
   onRegenerate: () => void;
   onSwapStep?: (stepIndex: number) => void;
+  onShuffleStep?: (stepIndex: number) => void;
   onSwapSideQuest?: (sideQuestIndex: number) => void;
   isEditingMode?: boolean;
   editingStepIndex?: number | null;
@@ -44,6 +47,7 @@ export default function PlanSummaryPanel({
   onSwapActivity,
   onRegenerate,
   onSwapStep,
+  onShuffleStep,
   onSwapSideQuest,
   isEditingMode,
   editingStepIndex,
@@ -51,6 +55,24 @@ export default function PlanSummaryPanel({
   onCancelEdit,
 }: PlanSummaryPanelProps) {
   const colors = colorSchemes[colorScheme];
+  const [isSaved, setIsSaved] = useState(false);
+  const [showSaveToast, setShowSaveToast] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(isPlanSaved(plan.id));
+  }, [plan.id]);
+
+  const handleToggleSave = () => {
+    if (isSaved) {
+      unsavePlan(plan.id);
+      setIsSaved(false);
+    } else {
+      savePlan(plan);
+      setIsSaved(true);
+      setShowSaveToast(true);
+      setTimeout(() => setShowSaveToast(false), 2000);
+    }
+  };
 
   const formatTime = (startMinutes: number, duration: number) => {
     const startHour = Math.floor(startMinutes / 60);
@@ -202,9 +224,9 @@ export default function PlanSummaryPanel({
                             </span>
                           )}
                         </div>
-                        {onSwapStep && !isEditingMode && (
+                        {onShuffleStep && (
                           <button
-                            onClick={() => onSwapStep(stepIndex)}
+                            onClick={() => onShuffleStep(stepIndex)}
                             className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
                             title="Shuffle this location"
                           >
@@ -334,9 +356,16 @@ export default function PlanSummaryPanel({
                   <Share2 className="h-4 w-4" />
                   Share
                 </button>
-                <button className="flex flex-col items-center gap-1 bg-gray-50 hover:bg-gray-100 rounded-lg py-3 text-xs font-medium text-gray-600 transition-colors">
-                  <Bookmark className="h-4 w-4" />
-                  Save
+                <button
+                  onClick={handleToggleSave}
+                  className={`flex flex-col items-center gap-1 rounded-lg py-3 text-xs font-medium transition-colors ${
+                    isSaved
+                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
+                  {isSaved ? 'Saved' : 'Save'}
                 </button>
                 <button
                   onClick={onRegenerate}
@@ -350,6 +379,21 @@ export default function PlanSummaryPanel({
           )}
         </div>
       </div>
+
+      {/* Save Toast */}
+      <AnimatePresence>
+        {showSaveToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+          >
+            <Heart className="h-4 w-4 fill-current" />
+            <span className="text-sm font-medium">Plan saved!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

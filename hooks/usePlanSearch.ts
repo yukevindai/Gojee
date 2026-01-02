@@ -158,12 +158,12 @@ export function usePlanSearch() {
       });
     }
 
-    // Search for hangout places
+    // Search for hangout places with broader keywords
     const hangoutTypes = getHangoutPlaceTypes(hangout);
     const hangoutRequest: google.maps.places.PlaceSearchRequest = {
       location: new google.maps.LatLng(location.lat, location.lng),
       radius,
-      type: hangoutTypes[0] || 'park',
+      keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo',
     };
 
     const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
