@@ -8,6 +8,9 @@ import Link from 'next/link';
 import FilterDropdown from '@/components/FilterDropdown';
 import QuickKeyButton from '@/components/QuickKeyButton';
 import PlaceMarker from '@/components/PlaceMarker';
+import NumberedMarker from '@/components/NumberedMarker';
+import RoutePolyline from '@/components/RoutePolyline';
+import MapBoundsController from '@/components/MapBoundsController';
 import PlanCard from '@/components/PlanCard';
 import PlanSummaryPanel from '@/components/PlanSummaryPanel';
 import StepByStepMode from '@/components/StepByStepMode';
@@ -15,8 +18,10 @@ import CuisineFilter from '@/components/CuisineFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
+import { useMapBounds } from '@/hooks/useMapBounds';
 import { Sparkles, Home, Heart, Loader2, ChevronRight, X } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
+import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
 import type { Plan } from '@/lib/planGenerator';
 import { getUserPreferences, isOnboardingComplete } from '@/lib/userPreferences';
@@ -632,6 +637,7 @@ export default function Dashboard() {
           gestureHandling="greedy"
           disableDefaultUI={false}
           className="h-full w-full"
+          styles={deemphasizedMapStyle}
         >
           {/* Place Markers - Conditional rendering based on selected plan */}
           {selectedPlan === null
@@ -675,35 +681,57 @@ export default function Dashboard() {
                     const actualIndex = plans.findIndex((p) => p.id === selectedPlan);
                     const colorScheme = getColorSchemeForIndex(actualIndex);
                     const colors = colorSchemes[colorScheme];
-                    const markers = [
-                      // Main plan steps
-                      ...modifiedPlan.steps.map((step) => (
-                        <PlaceMarker
-                          key={`${modifiedPlan.id}-${step.place.id}`}
+
+                    // Collect all places for bounds fitting
+                    const allPlaces = [
+                      ...modifiedPlan.steps.map(s => s.place),
+                      ...(modifiedPlan.sideQuests || []).map(sq => sq.place)
+                    ];
+
+                    const components = [
+                      // Auto-fit map bounds to show all locations
+                      <MapBoundsController key="bounds" places={allPlaces} />,
+
+                      // Route polyline connecting main steps
+                      <RoutePolyline
+                        key="route"
+                        places={modifiedPlan.steps.map(s => s.place)}
+                        color={colors.pinColor}
+                        opacity={0.7}
+                        strokeWeight={4}
+                      />,
+
+                      // Numbered markers for main plan steps
+                      ...modifiedPlan.steps.map((step, idx) => (
+                        <NumberedMarker
+                          key={`${modifiedPlan.id}-step-${idx}`}
                           place={step.place}
+                          number={idx + 1}
+                          type={step.type === 'dining' ? 'restaurant' : 'activity'}
                           onClick={() => console.log('Selected place:', step.place.name)}
-                          backgroundColor={colors.pinColor}
-                          borderColor={colors.pinBorder}
+                          isEditing={isEditingMode && editingStepIndex === idx}
+                          isCurrentStep={executionMode === 'stepByStep' && currentStepIndex === idx}
+                          isDimmed={isEditingMode && editingStepIndex !== null && editingStepIndex !== idx}
                         />
                       )),
                     ];
 
-                    // Add side quest markers if they exist
+                    // Add optional stop markers (side quests)
                     if (modifiedPlan.sideQuests && modifiedPlan.sideQuests.length > 0) {
-                      modifiedPlan.sideQuests.forEach((quest) => {
-                        markers.push(
-                          <PlaceMarker
-                            key={`${modifiedPlan.id}-sidequest-${quest.place.id}`}
+                      modifiedPlan.sideQuests.forEach((quest, idx) => {
+                        components.push(
+                          <NumberedMarker
+                            key={`${modifiedPlan.id}-sidequest-${idx}`}
                             place={quest.place}
+                            number={modifiedPlan.steps.length + idx + 1}
+                            type="optional"
                             onClick={() => console.log('Side quest:', quest.place.name)}
-                            backgroundColor="#F59E0B" // amber-500
-                            borderColor="#D97706" // amber-600
                           />
                         );
                       });
                     }
 
-                    return markers;
+                    return components;
                   })()
                 : []}
         </Map>
