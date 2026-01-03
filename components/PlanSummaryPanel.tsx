@@ -18,6 +18,7 @@ import {
   Edit3
 } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
+import type { Place } from '@/lib/places';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
 import { savePlan, unsavePlan, isPlanSaved } from '@/lib/savedPlans';
 
@@ -96,6 +97,42 @@ export default function PlanSummaryPanel({
     if (hours === 0) return `${mins}m`;
     if (mins === 0) return `${hours}h`;
     return `${hours}h ${mins}m`;
+  };
+
+  const getSideQuestInfo = (place: Place) => {
+    const types = place.types || [];
+
+    // Check for specific types and return appropriate icon and label
+    if (types.includes('cafe') || types.includes('coffee_shop')) {
+      return { icon: '☕', label: 'Coffee stop', color: 'bg-amber-600' };
+    } else if (types.includes('bar') || types.includes('night_club')) {
+      return { icon: '🍺', label: 'Drinks', color: 'bg-purple-600' };
+    } else if (types.includes('ice_cream_shop') || types.includes('bakery')) {
+      return { icon: '🍦', label: 'Dessert', color: 'bg-pink-600' };
+    } else if (types.includes('beach') || types.includes('natural_feature')) {
+      return { icon: '🏖️', label: 'Beach visit', color: 'bg-cyan-600' };
+    } else if (types.includes('tourist_attraction') || types.includes('landmark') || types.includes('historical_landmark')) {
+      return { icon: '🗿', label: 'Landmark', color: 'bg-indigo-600' };
+    } else if (types.includes('viewpoint') || types.includes('observation_deck')) {
+      return { icon: '🔭', label: 'Viewpoint', color: 'bg-teal-600' };
+    } else if (types.includes('amusement_center') || types.includes('arcade')) {
+      return { icon: '🎮', label: 'Arcade', color: 'bg-violet-600' };
+    } else if (types.includes('bowling_alley')) {
+      return { icon: '🎳', label: 'Bowling', color: 'bg-blue-600' };
+    } else if (types.includes('gym') || types.includes('fitness_center')) {
+      return { icon: '💪', label: 'Fitness', color: 'bg-red-600' };
+    } else if (types.includes('movie_theater')) {
+      return { icon: '🎬', label: 'Cinema', color: 'bg-slate-600' };
+    } else if (types.includes('book_store') || types.includes('library')) {
+      return { icon: '📚', label: 'Books', color: 'bg-emerald-600' };
+    } else if (types.includes('park')) {
+      return { icon: '🌳', label: 'Park', color: 'bg-green-600' };
+    } else if (types.includes('pier') || types.includes('marina')) {
+      return { icon: '⚓', label: 'Waterfront', color: 'bg-sky-600' };
+    }
+
+    // Default fallback
+    return { icon: '✨', label: 'Quick stop', color: 'bg-amber-500' };
   };
 
   const getTravelTime = () => {
@@ -257,30 +294,36 @@ export default function PlanSummaryPanel({
                 <div className="ml-5 flex items-center gap-2 text-sm text-gray-500 pt-2">
                   <span className="italic">Optional {plan.sideQuests.length > 1 ? 'stops' : 'stop'}</span>
                 </div>
-                {plan.sideQuests.map((quest, idx) => (
-                  <div key={quest.place.id} className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white font-bold">
-                      {plan.steps.length + idx + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="font-semibold text-gray-900">{quest.place.name}</div>
-                        {onSwapSideQuest && (
-                          <button
-                            onClick={() => onSwapSideQuest(idx)}
-                            className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                            title="Shuffle this side quest"
-                          >
-                            <Shuffle className="h-4 w-4" />
-                          </button>
-                        )}
+                {plan.sideQuests.map((quest, idx) => {
+                  const questInfo = getSideQuestInfo(quest.place);
+                  return (
+                    <div key={quest.place.id} className="flex items-start gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${questInfo.color} text-white font-bold text-lg`}>
+                        {questInfo.icon}
                       </div>
-                      <div className="text-sm text-gray-600">
-                        Anytime · {formatDuration(quest.duration)}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-semibold text-gray-900">{quest.place.name}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{questInfo.label}</div>
+                          </div>
+                          {onSwapSideQuest && (
+                            <button
+                              onClick={() => onSwapSideQuest(idx)}
+                              className="ml-2 rounded-full p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                              title="Shuffle this side quest"
+                            >
+                              <Shuffle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Anytime · {formatDuration(quest.duration)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>

@@ -86,18 +86,79 @@ export default function StepByStepMode({
     return `${hours}h ${mins}m`;
   };
 
+  const getSideQuestInfo = (place: Place) => {
+    const types = place.types || [];
+
+    // Check for specific types and return appropriate icon and label
+    if (types.includes('cafe') || types.includes('coffee_shop')) {
+      return { icon: '☕', label: 'Coffee stop', color: 'bg-amber-600' };
+    } else if (types.includes('bar') || types.includes('night_club')) {
+      return { icon: '🍺', label: 'Drinks', color: 'bg-purple-600' };
+    } else if (types.includes('ice_cream_shop') || types.includes('bakery')) {
+      return { icon: '🍦', label: 'Dessert', color: 'bg-pink-600' };
+    } else if (types.includes('beach') || types.includes('natural_feature')) {
+      return { icon: '🏖️', label: 'Beach visit', color: 'bg-cyan-600' };
+    } else if (types.includes('tourist_attraction') || types.includes('landmark') || types.includes('historical_landmark')) {
+      return { icon: '🗿', label: 'Landmark', color: 'bg-indigo-600' };
+    } else if (types.includes('viewpoint') || types.includes('observation_deck')) {
+      return { icon: '🔭', label: 'Viewpoint', color: 'bg-teal-600' };
+    } else if (types.includes('amusement_center') || types.includes('arcade')) {
+      return { icon: '🎮', label: 'Arcade', color: 'bg-violet-600' };
+    } else if (types.includes('bowling_alley')) {
+      return { icon: '🎳', label: 'Bowling', color: 'bg-blue-600' };
+    } else if (types.includes('gym') || types.includes('fitness_center')) {
+      return { icon: '💪', label: 'Fitness', color: 'bg-red-600' };
+    } else if (types.includes('movie_theater')) {
+      return { icon: '🎬', label: 'Cinema', color: 'bg-slate-600' };
+    } else if (types.includes('book_store') || types.includes('library')) {
+      return { icon: '📚', label: 'Books', color: 'bg-emerald-600' };
+    } else if (types.includes('park')) {
+      return { icon: '🌳', label: 'Park', color: 'bg-green-600' };
+    } else if (types.includes('pier') || types.includes('marina')) {
+      return { icon: '⚓', label: 'Waterfront', color: 'bg-sky-600' };
+    }
+
+    // Default fallback
+    return { icon: '✨', label: 'Quick stop', color: 'bg-amber-500' };
+  };
+
   const getStepTitle = (index: number) => {
     const step = allSteps[index];
     if (step.type === 'dining') return 'Dining';
-    if (step.type === 'hangout') return 'Activity';
+    if (step.type === 'hangout') {
+      // Check if it's a side quest (after main steps)
+      if (index >= plan.steps.length) {
+        const questInfo = getSideQuestInfo(step.place);
+        return questInfo.label;
+      }
+      return 'Activity';
+    }
     return 'Side Quest';
   };
 
   const getStepIcon = (index: number) => {
     const step = allSteps[index];
     if (step.type === 'dining') return colors.diningIcon;
-    if (step.type === 'hangout') return colors.hangoutIcon;
+    if (step.type === 'hangout') {
+      // Check if it's a side quest (after main steps)
+      if (index >= plan.steps.length) {
+        const questInfo = getSideQuestInfo(step.place);
+        return questInfo.color;
+      }
+      return colors.hangoutIcon;
+    }
     return 'bg-amber-500';
+  };
+
+  const getStepIconContent = (index: number) => {
+    const step = allSteps[index];
+    // For side quests, show emoji instead of number
+    if (step.type === 'hangout' && index >= plan.steps.length) {
+      const questInfo = getSideQuestInfo(step.place);
+      return questInfo.icon;
+    }
+    // For main steps, show number
+    return index + 1;
   };
 
   // Generate reason for why this place was chosen
@@ -230,7 +291,7 @@ export default function StepByStepMode({
           <div className="p-6 pb-4">
             <div className="flex items-start gap-3 mb-4">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${getStepIcon(currentStepIndex)} text-white font-bold text-lg`}>
-                {currentStepIndex + 1}
+                {getStepIconContent(currentStepIndex)}
               </div>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">
@@ -426,7 +487,7 @@ export default function StepByStepMode({
             </div>
             <div className="flex items-start gap-3">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${getStepIcon(currentStepIndex + 1)} text-white font-bold`}>
-                {currentStepIndex + 2}
+                {getStepIconContent(currentStepIndex + 1)}
               </div>
               <div className="flex-1">
                 <div className="font-semibold text-gray-900 mb-1">{nextStep.place.name}</div>
@@ -477,7 +538,7 @@ export default function StepByStepMode({
                       className={`flex items-start gap-3 ${idx === currentStepIndex ? 'opacity-100' : 'opacity-50'}`}
                     >
                       <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getStepIcon(idx)} text-white font-bold text-sm`}>
-                        {idx + 1}
+                        {getStepIconContent(idx)}
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 text-sm">{step.place.name}</div>
