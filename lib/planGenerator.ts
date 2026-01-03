@@ -167,8 +167,6 @@ function generateSinglePlans(params: {
 }): Plan[] {
   const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
-  const usedDiningIds = new Set<string>();
-  const usedHangoutIds = new Set<string>();
   const usedSideQuestIds = new Set<string>();
 
   // Increased from 10 to 20 to allow more combinations for Date Night
@@ -178,13 +176,9 @@ function generateSinglePlans(params: {
   let planIndex = 0;
   for (const dining of topDining) {
     for (const hangout of topHangout) {
-      if (usedDiningIds.has(dining.id) || usedHangoutIds.has(hangout.id)) {
-        continue;
-      }
-
       const distance = calculateDistance(dining, hangout);
-      // Keep main locations closer together (max 5km instead of 10km)
-      if (distance > 5000) continue;
+      // Keep main locations closer together (max 8km - relaxed from 5km)
+      if (distance > 8000) continue;
 
       const distanceCategory = categorizeDistance(distance);
       const diningDuration = getDiningDuration(partySize);
@@ -252,8 +246,6 @@ function generateSinglePlans(params: {
       };
 
       plans.push(plan);
-      usedDiningIds.add(dining.id);
-      usedHangoutIds.add(hangout.id);
       planIndex++;
 
       // Stop once we have the desired number of plans
@@ -282,7 +274,7 @@ function generateMorningPlans(params: {
 }): Plan[] {
   const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
-  const usedIds = new Set<string>();
+  const usedSideQuestIds = new Set<string>();
 
   const topBreakfast = breakfastPlaces.slice(0, 8);
   const topLunch = lunchPlaces.slice(0, 8);
@@ -298,14 +290,12 @@ function generateMorningPlans(params: {
         const uniqueIds = new Set(allIds);
         if (uniqueIds.size !== allIds.length) continue;
 
-        if (allIds.some(id => usedIds.has(id))) continue;
-
         // Check total distance - keep main locations closer together
         const dist1 = calculateDistance(breakfast, hangout);
         const dist2 = calculateDistance(hangout, lunch);
         const totalDistance = dist1 + dist2;
-        // Reduced from 15km to 10km to keep locations closer
-        if (totalDistance > 10000) continue;
+        // Relaxed from 10km to 15km to allow more plan combinations
+        if (totalDistance > 15000) continue;
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: breakfast, duration: 45 },
@@ -314,7 +304,7 @@ function generateMorningPlans(params: {
         ];
 
         // Find side quests (1-2 per plan)
-        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedIds, 2);
+        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedSideQuestIds, 2);
 
         // Don't require minimum side quests to ensure enough plans can be created
 
@@ -335,7 +325,6 @@ function generateMorningPlans(params: {
         };
 
         plans.push(plan);
-        allIds.forEach(id => usedIds.add(id));
         planIndex++;
         if (plans.length >= numberOfPlans) break;
       }
@@ -358,7 +347,7 @@ function generateAfternoonPlans(params: {
 }): Plan[] {
   const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
-  const usedIds = new Set<string>();
+  const usedSideQuestIds = new Set<string>();
 
   const topLunch = lunchPlaces.slice(0, 8);
   const topDinner = dinnerPlaces.slice(0, 8);
@@ -376,14 +365,12 @@ function generateAfternoonPlans(params: {
         const uniqueIds = new Set(allIds);
         if (uniqueIds.size !== allIds.length) continue;
 
-        if (allIds.some(id => usedIds.has(id))) continue;
-
         const dist1 = calculateDistance(lunch, hangout1);
         const dist2 = calculateDistance(hangout1, hangout2);
         const dist3 = calculateDistance(hangout2, dinner);
         const totalDistance = dist1 + dist2 + dist3;
-        // Reduced from 20km to 12km to keep locations closer
-        if (totalDistance > 12000) continue;
+        // Relaxed from 12km to 18km to allow more plan combinations
+        if (totalDistance > 18000) continue;
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: lunch, duration: 60 },
@@ -393,7 +380,7 @@ function generateAfternoonPlans(params: {
         ];
 
         // Find side quests (1-2 per plan)
-        const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedIds, 2);
+        const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedSideQuestIds, 2);
 
         // Don't require minimum side quests to ensure enough plans can be created
 
@@ -414,7 +401,6 @@ function generateAfternoonPlans(params: {
         };
 
         plans.push(plan);
-        allIds.forEach(id => usedIds.add(id));
         planIndex++;
         if (plans.length >= numberOfPlans) break;
       }
@@ -438,7 +424,7 @@ function generateFullDayPlans(params: {
 }): Plan[] {
   const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
-  const usedIds = new Set<string>();
+  const usedSideQuestIds = new Set<string>();
 
   // Increased pool sizes for more combinations
   const topBreakfast = breakfastPlaces.slice(0, 12);
@@ -469,9 +455,6 @@ function generateFullDayPlans(params: {
               const uniqueIds = new Set(allIds);
               if (uniqueIds.size !== allIds.length) continue;
 
-              // Skip if any location has already been used in another plan
-              if (allIds.some(id => usedIds.has(id))) continue;
-
               // Calculate total distance
               const dist1 = calculateDistance(breakfast, hangout1);
               const dist2 = calculateDistance(hangout1, lunch);
@@ -480,8 +463,8 @@ function generateFullDayPlans(params: {
               const dist5 = calculateDistance(hangout3, dinner);
               const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
 
-              // Reduced from 35km to 20km to keep locations closer
-              if (totalDistance > 20000) continue;
+              // Relaxed from 20km to 25km to allow more plan combinations
+              if (totalDistance > 25000) continue;
 
               const steps: ActivityStep[] = [
                 { type: 'dining', place: breakfast, duration: 45 },
@@ -493,7 +476,7 @@ function generateFullDayPlans(params: {
               ];
 
               // Find side quests (1-2 per plan)
-              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 2);
+              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedSideQuestIds, 2);
 
               // Don't require minimum side quests to ensure enough plans can be created
 
@@ -516,7 +499,6 @@ function generateFullDayPlans(params: {
               };
 
               plans.push(plan);
-              allIds.forEach(id => usedIds.add(id));
               planIndex++;
 
               if (plans.length >= numberOfPlans) break;
