@@ -19,6 +19,7 @@ import PriceFilter, { type PriceLevel } from '@/components/PriceFilter';
 import SideQuestBudgetFilter from '@/components/SideQuestBudgetFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
+import SpinningWheel from '@/components/SpinningWheel';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { useMapBounds } from '@/hooks/useMapBounds';
 import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers } from 'lucide-react';
@@ -81,6 +82,9 @@ function DashboardContent() {
   const [alternatives, setAlternatives] = useState<Array<{ place: Place; distanceImpact: string; reason: string }>>([]);
   const [previewPlace, setPreviewPlace] = useState<Place | null>(null);
   const [originalPlanBeforeEdit, setOriginalPlanBeforeEdit] = useState<Plan | null>(null);
+
+  // Spinning wheel state
+  const [isWheelOpen, setIsWheelOpen] = useState(false);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -651,6 +655,14 @@ function DashboardContent() {
     setOriginalPlanBeforeEdit(null);
   };
 
+  const handleLuckyPick = (plan: Plan) => {
+    // Auto-select and confirm the lucky plan
+    setSelectedPlan(plan.id);
+    setModifiedPlan(plan);
+    setExecutionMode('summary');
+    setIsPanelExpanded(false);
+  };
+
   const handleSwapSideQuest = async (sideQuestIndex: number) => {
     if (!modifiedPlan || !modifiedPlan.sideQuests) return;
 
@@ -1019,6 +1031,18 @@ function DashboardContent() {
                   </button>
                 </div>
 
+                {/* Surprise Me Button */}
+                <motion.button
+                  onClick={() => setIsWheelOpen(true)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 px-4 py-3 text-white font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  Feeling Lucky? Spin the Wheel!
+                  <Sparkles className="h-5 w-5" />
+                </motion.button>
+
                 {plans.map((plan, index) => (
                   <PlanCard
                     key={plan.id}
@@ -1157,6 +1181,14 @@ function DashboardContent() {
           selectedPreview={previewPlace}
         />
       )}
+
+      {/* Spinning Wheel Lottery */}
+      <SpinningWheel
+        plans={plans}
+        isOpen={isWheelOpen}
+        onClose={() => setIsWheelOpen(false)}
+        onPlanSelected={handleLuckyPick}
+      />
     </div>
   );
 }
