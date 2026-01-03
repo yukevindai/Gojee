@@ -396,7 +396,7 @@ function DashboardContent() {
       } else {
         // For activities - use broader search with specific activity types
         searchType = 'tourist_attraction';
-        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction';
+        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction landmark monument historical tourist pier waterfront viewpoint scenic';
       }
 
       const request: google.maps.places.PlaceSearchRequest = {
@@ -495,7 +495,7 @@ function DashboardContent() {
       } else {
         // For activities - use broader search with specific activity types
         searchType = 'tourist_attraction';
-        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction';
+        searchKeyword = 'museum park beach theater arcade bowling entertainment activity attraction landmark monument historical tourist pier waterfront viewpoint scenic';
       }
 
       const request: google.maps.places.PlaceSearchRequest = {
@@ -522,7 +522,8 @@ function DashboardContent() {
             'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
             'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
             'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
-            'night_club', 'library', 'arcade', 'theater', 'performing_arts_theater'
+            'night_club', 'library', 'arcade', 'theater', 'performing_arts_theater',
+            'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier'
           ];
 
           const availableResults = results.filter(result => {
