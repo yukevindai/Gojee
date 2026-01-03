@@ -852,7 +852,7 @@ function DashboardContent() {
             <div className="flex flex-wrap gap-3">
               <FilterDropdown
                 label="Party Size"
-                options={['2', '3', '4', '5', '6', '7', '8', '9+']}
+                options={['1', '2', '3', '4', '5', '6', '7', '8', '9+']}
                 value={partySize}
                 onChange={(val) => setPartySize(val as string)}
                 icon={<Users className="h-4 w-4" />}
