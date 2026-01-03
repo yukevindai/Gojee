@@ -86,6 +86,15 @@ export default function FilterDropdown({
               transition={{ duration: 0.15 }}
               className="absolute left-0 top-12 z-20 min-w-[200px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
             >
+              {/* Header with label */}
+              {icon && (
+                <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    {icon}
+                    <span>{label}</span>
+                  </div>
+                </div>
+              )}
               <div className="max-h-64 overflow-y-auto p-2">
                 {options.map((option) => {
                   const isSelected = multiSelect
