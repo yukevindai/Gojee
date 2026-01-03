@@ -21,7 +21,7 @@ import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { useMapBounds } from '@/hooks/useMapBounds';
-import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users } from 'lucide-react';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
@@ -890,6 +890,7 @@ function DashboardContent() {
                 options={['3', '5', '7', '10']}
                 value={numberOfPlans}
                 onChange={(val) => setNumberOfPlans(val as string)}
+                icon={<Layers className="h-4 w-4" />}
               />
             </div>
 
