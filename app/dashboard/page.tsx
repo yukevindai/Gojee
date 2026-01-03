@@ -49,6 +49,8 @@ function DashboardContent() {
   const [priceRange, setPriceRange] = useState<PriceLevel[]>([]);
   const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
   const [numberOfPlans, setNumberOfPlans] = useState<string>('5');
+  const [includeDining, setIncludeDining] = useState<string>('Yes');
+  const [includeActivities, setIncludeActivities] = useState<string>('Yes');
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
@@ -186,10 +188,12 @@ function DashboardContent() {
 
   // Check if any filter or quickkey is selected
   const hasSelection =
-    partySize !== '' ||
+    (partySize !== '' ||
     dining.length > 0 ||
     hangout !== '' ||
-    selectedQuickKey !== '';
+    selectedQuickKey !== '') &&
+    // Ensure both dining and activities aren't "No"
+    !(includeDining === 'No' && includeActivities === 'No');
 
   const handleQuickKeyClick = (key: string) => {
     const newKey = selectedQuickKey === key ? '' : key;
@@ -256,6 +260,8 @@ function DashboardContent() {
         priceRange: priceRange.length > 0 ? priceRange : undefined,
         sideQuestBudget: sideQuestBudget.length > 0 ? sideQuestBudget : undefined,
         numberOfPlans: numberOfPlans ? parseInt(numberOfPlans) : undefined,
+        includeDining: includeDining === 'Yes',
+        includeActivities: includeActivities === 'Yes',
       });
 
       // Expand panel to show results
@@ -870,6 +876,18 @@ function DashboardContent() {
                 value={partySize}
                 onChange={(val) => setPartySize(val as string)}
                 icon={<Users className="h-4 w-4" />}
+              />
+              <FilterDropdown
+                label="Include Dining"
+                options={['Yes', 'No']}
+                value={includeDining}
+                onChange={(val) => setIncludeDining(val as string)}
+              />
+              <FilterDropdown
+                label="Include Activities"
+                options={['Yes', 'No']}
+                value={includeActivities}
+                onChange={(val) => setIncludeActivities(val as string)}
               />
               <FilterDropdown
                 label="Dining"

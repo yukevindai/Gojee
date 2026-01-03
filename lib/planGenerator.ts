@@ -587,3 +587,138 @@ export function getHangoutPlaceTypes(hangoutType: string): string[] {
       return ['park', 'movie_theater', 'amusement_park', 'bowling_alley'];
   }
 }
+
+// Generate dining-only plans (multiple restaurants without activities)
+export function generateDiningOnlyPlans(params: {
+  breakfastPlaces?: Place[];
+  lunchPlaces?: Place[];
+  dinnerPlaces?: Place[];
+  partySize: string;
+  sideQuestPlaces?: Place[];
+  numberOfPlans: number;
+}): Plan[] {
+  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], partySize, sideQuestPlaces = [], numberOfPlans } = params;
+  const plans: Plan[] = [];
+  const usedSideQuestIds = new Set<string>();
+
+  // Combine all dining options
+  const allDiningPlaces = [...breakfastPlaces, ...lunchPlaces, ...dinnerPlaces];
+  if (allDiningPlaces.length === 0) return [];
+
+  // Take top restaurants
+  const topRestaurants = allDiningPlaces.slice(0, 30);
+
+  let planIndex = 0;
+  // Generate plans with 2-3 dining stops
+  for (let i = 0; i < topRestaurants.length - 1; i++) {
+    for (let j = i + 1; j < topRestaurants.length; j++) {
+      const restaurant1 = topRestaurants[i];
+      const restaurant2 = topRestaurants[j];
+
+      // Check for duplicates
+      if (restaurant1.id === restaurant2.id) continue;
+
+      // Check distance between restaurants
+      const distance = calculateDistance(restaurant1, restaurant2);
+      if (distance > 8000) continue; // Max 8km between restaurants
+
+      const steps: ActivityStep[] = [
+        { type: 'dining', place: restaurant1, duration: getDiningDuration(partySize) },
+        { type: 'dining', place: restaurant2, duration: getDiningDuration(partySize) },
+      ];
+
+      // Find side quests
+      const sideQuests = findSideQuests(sideQuestPlaces, [restaurant1, restaurant2], usedSideQuestIds, 2);
+
+      const avgCost = Math.round(((restaurant1.priceLevel || 2) + (restaurant2.priceLevel || 2)) / 2);
+      const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 20 + (sideQuests.length * 25);
+
+      const plan: Plan = {
+        id: `dining-${planIndex}`,
+        name: `Dining Tour: ${restaurant1.name.split(' ')[0]} & ${restaurant2.name.split(' ')[0]}`,
+        description: `Enjoy dining at ${restaurant1.name} and ${restaurant2.name}.`,
+        steps,
+        totalDuration,
+        estimatedCost: avgCost,
+        vibe: 'culinary',
+        distance,
+        distanceCategory: categorizeDistance(distance),
+        sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
+      };
+
+      plans.push(plan);
+      planIndex++;
+
+      if (plans.length >= numberOfPlans) break;
+    }
+    if (plans.length >= numberOfPlans) break;
+  }
+
+  return sortAndLimitPlans(plans, numberOfPlans);
+}
+
+// Generate activity-only plans (multiple activities without dining)
+export function generateActivityOnlyPlans(params: {
+  hangoutPlaces: Place[];
+  hangoutType: string;
+  partySize: string;
+  sideQuestPlaces?: Place[];
+  numberOfPlans: number;
+}): Plan[] {
+  const { hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], numberOfPlans } = params;
+  const plans: Plan[] = [];
+  const usedSideQuestIds = new Set<string>();
+
+  if (hangoutPlaces.length === 0) return [];
+
+  const topHangouts = hangoutPlaces.slice(0, 25);
+
+  let planIndex = 0;
+  // Generate plans with 2-3 activities
+  for (let i = 0; i < topHangouts.length - 1; i++) {
+    for (let j = i + 1; j < topHangouts.length; j++) {
+      const activity1 = topHangouts[i];
+      const activity2 = topHangouts[j];
+
+      // Check for duplicates
+      if (activity1.id === activity2.id) continue;
+
+      // Check distance between activities
+      const distance = calculateDistance(activity1, activity2);
+      if (distance > 10000) continue; // Max 10km between activities
+
+      const steps: ActivityStep[] = [
+        { type: 'hangout', place: activity1, duration: getHangoutDuration(activity1.types?.[0] || 'entertainment') },
+        { type: 'hangout', place: activity2, duration: getHangoutDuration(activity2.types?.[0] || 'entertainment') },
+      ];
+
+      // Find side quests
+      const sideQuests = findSideQuests(sideQuestPlaces, [activity1, activity2], usedSideQuestIds, 2);
+
+      const avgCost = Math.round(((activity1.priceLevel || 2) + (activity2.priceLevel || 2)) / 2);
+      const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 20 + (sideQuests.length * 25);
+      const vibe = getVibeFromHangout(activity1.types?.[0] || 'entertainment', hangoutType);
+
+      const plan: Plan = {
+        id: `activity-${planIndex}`,
+        name: `Activity Day: ${activity1.name.split(' ')[0]} & ${activity2.name.split(' ')[0]}`,
+        description: `Explore ${activity1.name} and ${activity2.name}.`,
+        steps,
+        totalDuration,
+        estimatedCost: avgCost,
+        vibe,
+        distance,
+        distanceCategory: categorizeDistance(distance),
+        sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
+      };
+
+      plans.push(plan);
+      planIndex++;
+
+      if (plans.length >= numberOfPlans) break;
+    }
+    if (plans.length >= numberOfPlans) break;
+  }
+
+  return sortAndLimitPlans(plans, numberOfPlans);
+}
