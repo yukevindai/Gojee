@@ -22,7 +22,7 @@ import SwapBottomSheet from '@/components/SwapBottomSheet';
 import SpinningWheel from '@/components/SpinningWheel';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { useMapBounds } from '@/hooks/useMapBounds';
-import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers } from 'lucide-react';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers, UtensilsCrossed, MapPin } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
@@ -49,7 +49,6 @@ function DashboardContent() {
   const [priceRange, setPriceRange] = useState<PriceLevel[]>([]);
   const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
   const [numberOfPlans, setNumberOfPlans] = useState<string>('5');
-  const [includeDining, setIncludeDining] = useState<string>('Yes');
   const [includeActivities, setIncludeActivities] = useState<string>('Yes');
 
   // QuickKey state
@@ -186,6 +185,10 @@ function DashboardContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Determine if dining and activities are included
+  const includeDining = !dining.includes('No Dining');
+  const includeActivitiesBoolean = includeActivities === 'Yes';
+
   // Check if any filter or quickkey is selected
   const hasSelection =
     (partySize !== '' ||
@@ -193,7 +196,19 @@ function DashboardContent() {
     hangout !== '' ||
     selectedQuickKey !== '') &&
     // Ensure both dining and activities aren't "No"
-    !(includeDining === 'No' && includeActivities === 'No');
+    !(dining.includes('No Dining') && includeActivities === 'No');
+
+  const handleDiningChange = (val: string | string[]) => {
+    const newDining = val as string[];
+
+    // If "No Dining" is selected, clear all other dining options
+    if (newDining.includes('No Dining')) {
+      setDining(['No Dining']);
+    } else {
+      // Remove "No Dining" if any meal type is selected
+      setDining(newDining.filter(d => d !== 'No Dining'));
+    }
+  };
 
   const handleQuickKeyClick = (key: string) => {
     const newKey = selectedQuickKey === key ? '' : key;
@@ -250,9 +265,12 @@ function DashboardContent() {
 
     // Search for plans
     try {
+      // Filter out "No Dining" from dining options when passing to search
+      const diningOptions = dining.filter(d => d !== 'No Dining');
+
       await searchPlans({
         partySize,
-        dining,
+        dining: diningOptions,
         hangout,
         location: userLocation,
         planType,
@@ -260,7 +278,7 @@ function DashboardContent() {
         priceRange: priceRange.length > 0 ? priceRange : undefined,
         sideQuestBudget: sideQuestBudget.length > 0 ? sideQuestBudget : undefined,
         numberOfPlans: numberOfPlans ? parseInt(numberOfPlans) : undefined,
-        includeDining: includeDining === 'Yes',
+        includeDining: !dining.includes('No Dining'),
         includeActivities: includeActivities === 'Yes',
       });
 
@@ -878,23 +896,12 @@ function DashboardContent() {
                 icon={<Users className="h-4 w-4" />}
               />
               <FilterDropdown
-                label="Include Dining"
-                options={['Yes', 'No']}
-                value={includeDining}
-                onChange={(val) => setIncludeDining(val as string)}
-              />
-              <FilterDropdown
-                label="Include Activities"
-                options={['Yes', 'No']}
-                value={includeActivities}
-                onChange={(val) => setIncludeActivities(val as string)}
-              />
-              <FilterDropdown
                 label="Dining"
-                options={['Breakfast', 'Lunch', 'Dinner', 'Quick bite', 'Snack', 'Dessert']}
+                options={['No Dining', 'Breakfast', 'Lunch', 'Dinner', 'Quick bite', 'Snack', 'Dessert']}
                 value={dining}
-                onChange={(val) => setDining(val as string[])}
+                onChange={handleDiningChange}
                 multiSelect
+                icon={<UtensilsCrossed className="h-4 w-4" />}
               />
               <CuisineFilter
                 value={cuisines}
@@ -906,6 +913,13 @@ function DashboardContent() {
                 options={['Formal', 'Chill', 'Date', 'N/A']}
                 value={hangout}
                 onChange={(val) => setHangout(val as string)}
+              />
+              <FilterDropdown
+                label="Activities"
+                options={['Yes', 'No']}
+                value={includeActivities}
+                onChange={(val) => setIncludeActivities(val as string)}
+                icon={<MapPin className="h-4 w-4" />}
               />
               <PriceFilter
                 value={priceRange}
