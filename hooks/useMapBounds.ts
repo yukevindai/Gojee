@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from '@vis.gl/react-google-maps';
 import type { Place } from '@/lib/places';
 
@@ -13,9 +13,21 @@ export function useMapBounds(
 ) {
   const map = useMap();
   const { padding = 80, maxZoom = 15 } = options;
+  const hasSetBounds = useRef(false);
+  const lastPlaceIds = useRef<string>('');
 
   useEffect(() => {
     if (!map || !places || places.length === 0) return;
+
+    // Create a stable identifier for the current set of places
+    const currentPlaceIds = places.map(p => p.id).sort().join(',');
+
+    // Only fit bounds if this is a new set of places
+    if (currentPlaceIds === lastPlaceIds.current) {
+      return;
+    }
+
+    lastPlaceIds.current = currentPlaceIds;
 
     // Create bounds
     const bounds = new google.maps.LatLngBounds();

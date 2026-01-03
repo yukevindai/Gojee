@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Star, Clock, DollarSign, MapPin, ArrowRight, Utensils, PartyPopper, Footprints, Bus, Car, Coffee, Gamepad2, Dumbbell, Film } from 'lucide-react';
 import type { Plan } from '@/lib/planGenerator';
+import type { Place } from '@/lib/places';
 import { colorSchemes, type ColorScheme } from '@/lib/colorSchemes';
 import PriceIndicator from './PriceIndicator';
 
@@ -45,24 +46,40 @@ export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected 
     }
   };
 
-  const getSideQuestInfo = (types?: string[]) => {
-    if (!types) return { icon: <Coffee className="h-4 w-4" />, message: '☕ Grab a quick stop on your way!' };
+  const getSideQuestInfo = (place: Place) => {
+    const types = place.types || [];
 
-    if (types.includes('cafe') || types.includes('bakery')) {
-      return { icon: <Coffee className="h-4 w-4" />, message: '☕ Grab coffee or bubble tea on your way!' };
-    }
-    if (types.includes('amusement_center') || types.includes('arcade')) {
-      return { icon: <Gamepad2 className="h-4 w-4" />, message: '🎮 Stop by for some games!' };
-    }
-    if (types.includes('gym') || types.includes('fitness')) {
-      return { icon: <Dumbbell className="h-4 w-4" />, message: '💪 Hit the gym on your way!' };
-    }
-    if (types.includes('movie_theater')) {
-      return { icon: <Film className="h-4 w-4" />, message: '🎬 Catch a movie!' };
+    // Check for specific types and return appropriate icon, label, and color
+    if (types.includes('cafe') || types.includes('coffee_shop')) {
+      return { icon: '☕', label: 'Coffee stop', color: 'bg-amber-600', message: 'Grab coffee or bubble tea!' };
+    } else if (types.includes('bar') || types.includes('night_club')) {
+      return { icon: '🍺', label: 'Drinks', color: 'bg-purple-600', message: 'Stop for drinks!' };
+    } else if (types.includes('ice_cream_shop') || types.includes('bakery')) {
+      return { icon: '🍦', label: 'Dessert', color: 'bg-pink-600', message: 'Grab a sweet treat!' };
+    } else if (types.includes('beach') || types.includes('natural_feature')) {
+      return { icon: '🏖️', label: 'Beach visit', color: 'bg-cyan-600', message: 'Visit the beach!' };
+    } else if (types.includes('tourist_attraction') || types.includes('landmark') || types.includes('historical_landmark')) {
+      return { icon: '🗿', label: 'Landmark', color: 'bg-indigo-600', message: 'See this landmark!' };
+    } else if (types.includes('viewpoint') || types.includes('observation_deck')) {
+      return { icon: '🔭', label: 'Viewpoint', color: 'bg-teal-600', message: 'Check out the view!' };
+    } else if (types.includes('amusement_center') || types.includes('arcade')) {
+      return { icon: '🎮', label: 'Arcade', color: 'bg-violet-600', message: 'Play some games!' };
+    } else if (types.includes('bowling_alley')) {
+      return { icon: '🎳', label: 'Bowling', color: 'bg-blue-600', message: 'Go bowling!' };
+    } else if (types.includes('gym') || types.includes('fitness_center')) {
+      return { icon: '💪', label: 'Fitness', color: 'bg-red-600', message: 'Hit the gym!' };
+    } else if (types.includes('movie_theater')) {
+      return { icon: '🎬', label: 'Cinema', color: 'bg-slate-600', message: 'Catch a movie!' };
+    } else if (types.includes('book_store') || types.includes('library')) {
+      return { icon: '📚', label: 'Books', color: 'bg-emerald-600', message: 'Browse some books!' };
+    } else if (types.includes('park')) {
+      return { icon: '🌳', label: 'Park', color: 'bg-green-600', message: 'Visit the park!' };
+    } else if (types.includes('pier') || types.includes('marina')) {
+      return { icon: '⚓', label: 'Waterfront', color: 'bg-sky-600', message: 'Check out the waterfront!' };
     }
 
-    // Default
-    return { icon: <Coffee className="h-4 w-4" />, message: '☕ Grab a quick stop on your way!' };
+    // Default fallback
+    return { icon: '✨', label: 'Quick stop', color: 'bg-amber-500', message: 'Quick stop along the way!' };
   };
 
   const colors = colorSchemes[colorScheme];
@@ -171,15 +188,16 @@ export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected 
             {/* Collective Box for All Side Quests */}
             <div className="relative rounded-xl border-2 border-dashed border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 space-y-3">
               {plan.sideQuests.map((sideQuest, idx) => {
-                const sideQuestInfo = getSideQuestInfo(sideQuest.place.types);
+                const sideQuestInfo = getSideQuestInfo(sideQuest.place);
                 return (
                   <div key={sideQuest.place.id} className={idx > 0 ? "pt-3 border-t border-amber-200" : ""}>
                     <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sideQuestInfo.color} text-white text-lg font-bold`}>
                         {sideQuestInfo.icon}
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900">{sideQuest.place.name}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{sideQuestInfo.label}</div>
                         <div className="mt-1 flex items-center gap-2 text-xs text-gray-600">
                           <MapPin className="h-3 w-3" />
                           <span className="line-clamp-1">{sideQuest.place.address}</span>
@@ -198,7 +216,7 @@ export default function PlanCard({ plan, index, onSelect, onConfirm, isSelected 
                             <span>{formatDuration(sideQuest.duration)}</span>
                           </div>
                         </div>
-                        <div className="mt-2 rounded bg-amber-100 px-2 py-1 text-xs text-amber-800">
+                        <div className="mt-2 rounded bg-white/60 px-2 py-1 text-xs text-gray-700">
                           {sideQuestInfo.message}
                         </div>
                       </div>
