@@ -28,6 +28,7 @@ export interface GeneratePlansOptions {
   partySize: string;
   sideQuestPlaces?: Place[]; // Optional side quest venues (coffee, arcade, gym, etc.)
   planType: 'morning' | 'afternoon' | 'fullday' | 'single'; // Type of plan to generate
+  numberOfPlans?: number; // Number of plans to generate (default 5)
 }
 
 function calculateDistance(place1: Place, place2: Place): number {
@@ -129,7 +130,7 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 }
 
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
-  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType } = options;
+  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5 } = options;
 
   // For backward compatibility, if old parameters are passed
   const diningPlaces = (options as any).diningPlaces || [];
@@ -137,22 +138,22 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
 
   // If using old interface (single dining type)
   if (diningPlaces.length > 0 && planType === 'single') {
-    return generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops });
+    return generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans });
   }
 
   // Generate plans based on plan type
   switch (planType) {
     case 'morning':
-      return generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces });
+      return generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
     case 'afternoon':
-      return generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces });
+      return generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
     case 'fullday':
-      return generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces });
+      return generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
     case 'single':
     default:
       // Use first available dining category
       const singleDining = dinnerPlaces.length > 0 ? dinnerPlaces : (lunchPlaces.length > 0 ? lunchPlaces : breakfastPlaces);
-      return generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces });
+      return generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
   }
 }
 
@@ -162,8 +163,9 @@ function generateSinglePlans(params: {
   hangoutType: string;
   partySize: string;
   sideQuestPlaces: Place[];
+  numberOfPlans: number;
 }): Plan[] {
-  const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces } = params;
+  const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
   const usedDiningIds = new Set<string>();
   const usedHangoutIds = new Set<string>();
@@ -254,10 +256,10 @@ function generateSinglePlans(params: {
       usedHangoutIds.add(hangout.id);
       planIndex++;
 
-      // Stop once we have 5 plans
-      if (plans.length >= 5) break;
+      // Stop once we have the desired number of plans
+      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= 5) break;
+    if (plans.length >= numberOfPlans) break;
   }
 
   plans.sort((a, b) => {
@@ -266,7 +268,7 @@ function generateSinglePlans(params: {
     return ratingB - ratingA;
   });
 
-  return plans.slice(0, 5);
+  return plans.slice(0, numberOfPlans);
 }
 
 function generateMorningPlans(params: {
@@ -276,8 +278,9 @@ function generateMorningPlans(params: {
   hangoutType: string;
   partySize: string;
   sideQuestPlaces: Place[];
+  numberOfPlans: number;
 }): Plan[] {
-  const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces } = params;
+  const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
   const usedIds = new Set<string>();
 
@@ -334,14 +337,14 @@ function generateMorningPlans(params: {
         plans.push(plan);
         allIds.forEach(id => usedIds.add(id));
         planIndex++;
-        if (plans.length >= 5) break;
+        if (plans.length >= numberOfPlans) break;
       }
-      if (plans.length >= 5) break;
+      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= 5) break;
+    if (plans.length >= numberOfPlans) break;
   }
 
-  return sortAndLimitPlans(plans);
+  return sortAndLimitPlans(plans, numberOfPlans);
 }
 
 function generateAfternoonPlans(params: {
@@ -351,8 +354,9 @@ function generateAfternoonPlans(params: {
   hangoutType: string;
   partySize: string;
   sideQuestPlaces: Place[];
+  numberOfPlans: number;
 }): Plan[] {
-  const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces } = params;
+  const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
   const usedIds = new Set<string>();
 
@@ -412,14 +416,14 @@ function generateAfternoonPlans(params: {
         plans.push(plan);
         allIds.forEach(id => usedIds.add(id));
         planIndex++;
-        if (plans.length >= 5) break;
+        if (plans.length >= numberOfPlans) break;
       }
-      if (plans.length >= 5) break;
+      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= 5) break;
+    if (plans.length >= numberOfPlans) break;
   }
 
-  return sortAndLimitPlans(plans);
+  return sortAndLimitPlans(plans, numberOfPlans);
 }
 
 function generateFullDayPlans(params: {
@@ -430,8 +434,9 @@ function generateFullDayPlans(params: {
   hangoutType: string;
   partySize: string;
   sideQuestPlaces: Place[];
+  numberOfPlans: number;
 }): Plan[] {
-  const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces } = params;
+  const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
   const plans: Plan[] = [];
   const usedIds = new Set<string>();
 
@@ -514,20 +519,20 @@ function generateFullDayPlans(params: {
               allIds.forEach(id => usedIds.add(id));
               planIndex++;
 
-              if (plans.length >= 5) break;
+              if (plans.length >= numberOfPlans) break;
             }
-            if (plans.length >= 5) break;
+            if (plans.length >= numberOfPlans) break;
           }
-          if (plans.length >= 5) break;
+          if (plans.length >= numberOfPlans) break;
         }
-        if (plans.length >= 5) break;
+        if (plans.length >= numberOfPlans) break;
       }
-      if (plans.length >= 5) break;
+      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= 5) break;
+    if (plans.length >= numberOfPlans) break;
   }
 
-  return sortAndLimitPlans(plans);
+  return sortAndLimitPlans(plans, numberOfPlans);
 }
 
 function findSideQuests(
@@ -578,14 +583,14 @@ function findSideQuests(
   return sideQuests;
 }
 
-function sortAndLimitPlans(plans: Plan[]): Plan[] {
+function sortAndLimitPlans(plans: Plan[], numberOfPlans: number): Plan[] {
   plans.sort((a, b) => {
     const ratingA = a.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
     const ratingB = b.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
     return ratingB - ratingA;
   });
 
-  return plans.slice(0, 5);
+  return plans.slice(0, numberOfPlans);
 }
 
 export function getHangoutPlaceTypes(hangoutType: string): string[] {

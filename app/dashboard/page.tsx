@@ -47,6 +47,7 @@ function DashboardContent() {
   const [cuisines, setCuisines] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<PriceLevel[]>([]);
   const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
+  const [numberOfPlans, setNumberOfPlans] = useState<string>('5');
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
@@ -250,6 +251,7 @@ function DashboardContent() {
         cuisines: cuisines.length > 0 ? cuisines : getUserPreferences().cuisines,
         priceRange: priceRange.length > 0 ? priceRange : undefined,
         sideQuestBudget: sideQuestBudget.length > 0 ? sideQuestBudget : undefined,
+        numberOfPlans: numberOfPlans ? parseInt(numberOfPlans) : undefined,
       });
 
       // Expand panel to show results
@@ -882,6 +884,12 @@ function DashboardContent() {
               <SideQuestBudgetFilter
                 value={sideQuestBudget}
                 onChange={setSideQuestBudget}
+              />
+              <FilterDropdown
+                label="# of Plans"
+                options={['3', '5', '7', '10']}
+                value={numberOfPlans}
+                onChange={(val) => setNumberOfPlans(val as string)}
               />
             </div>
 

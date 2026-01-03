@@ -310,6 +310,7 @@ export function usePlanSearch() {
       partySize,
       sideQuestPlaces: coffeeShops,
       planType,
+      numberOfPlans: filters.numberOfPlans || 5,
     } as any); // Cast for compatibility with old interface
   };
 
