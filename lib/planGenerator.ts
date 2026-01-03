@@ -290,6 +290,11 @@ function generateMorningPlans(params: {
     for (const hangout of topHangout) {
       for (const lunch of topLunch) {
         const allIds = [breakfast.id, hangout.id, lunch.id];
+
+        // Check for duplicates within this plan (e.g., same restaurant for breakfast and lunch)
+        const uniqueIds = new Set(allIds);
+        if (uniqueIds.size !== allIds.length) continue;
+
         if (allIds.some(id => usedIds.has(id))) continue;
 
         // Check total distance - keep main locations closer together
@@ -363,6 +368,11 @@ function generateAfternoonPlans(params: {
       const hangout2 = topHangout[i + 1];
       for (const dinner of topDinner) {
         const allIds = [lunch.id, hangout1.id, hangout2.id, dinner.id];
+
+        // Check for duplicates within this plan (e.g., same restaurant for lunch and dinner)
+        const uniqueIds = new Set(allIds);
+        if (uniqueIds.size !== allIds.length) continue;
+
         if (allIds.some(id => usedIds.has(id))) continue;
 
         const dist1 = calculateDistance(lunch, hangout1);
@@ -451,6 +461,10 @@ function generateFullDayPlans(params: {
               const hangout3 = topHangout[k];
 
               const allIds = [breakfast.id, hangout1.id, lunch.id, hangout2.id, hangout3.id, dinner.id];
+
+              // Check for duplicates within this plan (e.g., same restaurant for multiple meals)
+              const uniqueIds = new Set(allIds);
+              if (uniqueIds.size !== allIds.length) continue;
 
               // Skip if any location has already been used in another plan
               if (allIds.some(id => usedIds.has(id))) continue;
