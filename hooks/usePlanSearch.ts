@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { Place, SearchFilters } from '@/lib/places';
 import { getPlaceType } from '@/lib/places';
-import { generatePlans, getHangoutPlaceTypes, type Plan } from '@/lib/planGenerator';
+import { generatePlans, generateDiningOnlyPlans, generateActivityOnlyPlans, getHangoutPlaceTypes, type Plan } from '@/lib/planGenerator';
 import { getCuisineKeywords } from '@/lib/cuisines';
 
 function mapPlaceResults(results: google.maps.places.PlaceResult[]): Place[] {
@@ -47,7 +47,7 @@ export function usePlanSearch() {
     filters: SearchFilters,
     radius: number
   ): Promise<Plan[]> => {
-    const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines, priceRange, sideQuestBudget } = filters;
+    const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines, priceRange, sideQuestBudget, includeDining = true, includeActivities = true } = filters;
 
     // Get cuisine keywords for search
     const cuisineKeywords = cuisines && cuisines.length > 0 ? getCuisineKeywords(cuisines) : '';
@@ -114,116 +114,122 @@ export function usePlanSearch() {
       });
     };
 
-    // Search for meal places based on plan type
+    // Search for meal places based on plan type (only if includeDining is true)
     let breakfastPlaces: Place[] = [];
     let lunchPlaces: Place[] = [];
     let dinnerPlaces: Place[] = [];
     let diningPlaces: Place[] = []; // For backward compatibility with single plans
 
-    if (planType === 'morning') {
-      [breakfastPlaces, lunchPlaces] = await Promise.all([
-        searchMealType('Breakfast'),
-        searchMealType('Lunch'),
-      ]);
-    } else if (planType === 'afternoon') {
-      [lunchPlaces, dinnerPlaces] = await Promise.all([
-        searchMealType('Lunch'),
-        searchMealType('Dinner'),
-      ]);
-    } else if (planType === 'fullday') {
-      [breakfastPlaces, lunchPlaces, dinnerPlaces] = await Promise.all([
-        searchMealType('Breakfast'),
-        searchMealType('Lunch'),
-        searchMealType('Dinner'),
-      ]);
-    } else {
-      // Single plan - use original logic
-      const diningTypes = getPlaceType(dining);
-      let diningKeyword = 'restaurant food dining';
+    if (includeDining) {
+      if (planType === 'morning') {
+        [breakfastPlaces, lunchPlaces] = await Promise.all([
+          searchMealType('Breakfast'),
+          searchMealType('Lunch'),
+        ]);
+      } else if (planType === 'afternoon') {
+        [lunchPlaces, dinnerPlaces] = await Promise.all([
+          searchMealType('Lunch'),
+          searchMealType('Dinner'),
+        ]);
+      } else if (planType === 'fullday') {
+        [breakfastPlaces, lunchPlaces, dinnerPlaces] = await Promise.all([
+          searchMealType('Breakfast'),
+          searchMealType('Lunch'),
+          searchMealType('Dinner'),
+        ]);
+      } else {
+        // Single plan - use original logic
+        const diningTypes = getPlaceType(dining);
+        let diningKeyword = 'restaurant food dining';
 
-      // Add cuisine keywords if specified
-      if (cuisineKeywords) {
-        diningKeyword = `${diningKeyword} ${cuisineKeywords}`;
+        // Add cuisine keywords if specified
+        if (cuisineKeywords) {
+          diningKeyword = `${diningKeyword} ${cuisineKeywords}`;
+        }
+
+        const diningRequest: google.maps.places.PlaceSearchRequest = {
+          location: new google.maps.LatLng(location.lat, location.lng),
+          radius,
+          type: diningTypes[0] || 'restaurant',
+          keyword: diningKeyword,
+        };
+
+        diningPlaces = await new Promise<Place[]>((resolve, reject) => {
+          service.nearbySearch(diningRequest, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              const validFoodTypes = [
+                'restaurant', 'cafe', 'bar', 'food', 'bakery',
+                'meal_takeaway', 'meal_delivery', 'fast_food'
+              ];
+
+              const filteredResults = results.filter((result) => {
+                const types = result.types || [];
+                return types.some(type => validFoodTypes.includes(type));
+              });
+
+              // Map results and filter by price
+              const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
+              const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
+              resolve(priceFilteredPlaces);
+            } else {
+              reject(new Error(`Dining search failed: ${status}`));
+            }
+          });
+        });
       }
+    }
 
-      const diningRequest: google.maps.places.PlaceSearchRequest = {
+    // Search for hangout places with broader keywords (only if includeActivities is true)
+    let hangoutPlaces: Place[] = [];
+
+    if (includeActivities) {
+      // Use keyword-only search (no type restriction) for maximum flexibility
+      const hangoutRequest: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(location.lat, location.lng),
-        radius,
-        type: diningTypes[0] || 'restaurant',
-        keyword: diningKeyword,
+        radius: 3000, // Use larger radius for activities (3km)
+        keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery landmark monument historical tourist pier waterfront',
       };
 
-      diningPlaces = await new Promise<Place[]>((resolve, reject) => {
-        service.nearbySearch(diningRequest, (results, status) => {
+      hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
+        service.nearbySearch(hangoutRequest, (results, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            const validFoodTypes = [
-              'restaurant', 'cafe', 'bar', 'food', 'bakery',
-              'meal_takeaway', 'meal_delivery', 'fast_food'
+            // Filter out lodging/hotels - we only want actual activity locations
+            const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+            const validActivityTypes = [
+              'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
+              'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
+              'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
+              'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
+              'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier'
             ];
 
             const filteredResults = results.filter((result) => {
               const types = result.types || [];
-              return types.some(type => validFoodTypes.includes(type));
+
+              // Exclude if any type is a lodging type
+              const hasLodging = types.some(type => excludedTypes.includes(type));
+              if (hasLodging) return false;
+
+              // Include if it has valid activity types or if it's a general point_of_interest
+              const hasValidActivity = types.some(type => validActivityTypes.includes(type));
+              return hasValidActivity || types.includes('point_of_interest');
             });
 
             // Map results and filter by price
             const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
             const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
             resolve(priceFilteredPlaces);
+          } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            // If no results found, resolve with empty array instead of rejecting
+            // This allows the plan generation to continue without hangout places
+            console.warn('No hangout places found in area, continuing without activities');
+            resolve([]);
           } else {
-            reject(new Error(`Dining search failed: ${status}`));
+            reject(new Error(`Hangout search failed: ${status}`));
           }
         });
       });
     }
-
-    // Search for hangout places with broader keywords
-    // Use keyword-only search (no type restriction) for maximum flexibility
-    const hangoutRequest: google.maps.places.PlaceSearchRequest = {
-      location: new google.maps.LatLng(location.lat, location.lng),
-      radius: 3000, // Use larger radius for activities (3km)
-      keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery landmark monument historical tourist pier waterfront',
-    };
-
-    const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
-      service.nearbySearch(hangoutRequest, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          // Filter out lodging/hotels - we only want actual activity locations
-          const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
-          const validActivityTypes = [
-            'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
-            'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
-            'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
-            'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
-            'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier'
-          ];
-
-          const filteredResults = results.filter((result) => {
-            const types = result.types || [];
-
-            // Exclude if any type is a lodging type
-            const hasLodging = types.some(type => excludedTypes.includes(type));
-            if (hasLodging) return false;
-
-            // Include if it has valid activity types or if it's a general point_of_interest
-            const hasValidActivity = types.some(type => validActivityTypes.includes(type));
-            return hasValidActivity || types.includes('point_of_interest');
-          });
-
-          // Map results and filter by price
-          const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
-          const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
-          resolve(priceFilteredPlaces);
-        } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-          // If no results found, resolve with empty array instead of rejecting
-          // This allows the plan generation to continue without hangout places
-          console.warn('No hangout places found in area, continuing without activities');
-          resolve([]);
-        } else {
-          reject(new Error(`Hangout search failed: ${status}`));
-        }
-      });
-    });
 
     // Search for side quest locations (coffee, arcades, gyms, etc.) for all plans
     let coffeeShops: Place[] = [];
@@ -299,19 +305,41 @@ export function usePlanSearch() {
       coffeeShops = coffeeShops.sort(() => Math.random() - 0.5);
     }
 
-    // Generate plans from the search results
-    return generatePlans({
-      breakfastPlaces,
-      lunchPlaces,
-      dinnerPlaces,
-      diningPlaces, // For backward compatibility
-      hangoutPlaces,
-      hangoutType: hangout,
-      partySize,
-      sideQuestPlaces: coffeeShops,
-      planType,
-      numberOfPlans: filters.numberOfPlans || 5,
-    } as any); // Cast for compatibility with old interface
+    // Generate plans from the search results based on includeDining and includeActivities
+    if (!includeDining && includeActivities) {
+      // Activity-only plans
+      return generateActivityOnlyPlans({
+        hangoutPlaces,
+        hangoutType: hangout,
+        partySize,
+        sideQuestPlaces: coffeeShops,
+        numberOfPlans: filters.numberOfPlans || 5,
+      });
+    } else if (includeDining && !includeActivities) {
+      // Dining-only plans
+      return generateDiningOnlyPlans({
+        breakfastPlaces,
+        lunchPlaces,
+        dinnerPlaces,
+        partySize,
+        sideQuestPlaces: coffeeShops,
+        numberOfPlans: filters.numberOfPlans || 5,
+      });
+    } else {
+      // Standard plans with both dining and activities
+      return generatePlans({
+        breakfastPlaces,
+        lunchPlaces,
+        dinnerPlaces,
+        diningPlaces, // For backward compatibility
+        hangoutPlaces,
+        hangoutType: hangout,
+        partySize,
+        sideQuestPlaces: coffeeShops,
+        planType,
+        numberOfPlans: filters.numberOfPlans || 5,
+      } as any); // Cast for compatibility with old interface
+    }
   };
 
   const searchPlans = useCallback(async (filters: SearchFilters) => {
