@@ -196,7 +196,7 @@ function generateSinglePlans(params: {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
-      // Find side quests: mostly close, but 1-2 can be farther for variety
+      // Find side quests: limit to 1-2 per plan to ensure enough plans can be created
       const sideQuests: ActivityStep[] = [];
       if (sideQuestPlaces && sideQuestPlaces.length > 0) {
         // First, find close side quests (within 2km)
@@ -205,9 +205,9 @@ function generateSinglePlans(params: {
           const distanceToDining = calculateDistance(shop, dining);
           const distanceToHangout = calculateDistance(shop, hangout);
           return distanceToDining <= 2000 || distanceToHangout <= 2000;
-        }).slice(0, 2);
+        }).slice(0, 1);
 
-        // Then, find 1-2 farther side quests for variety (within 5km)
+        // Then, find 1 farther side quest for variety (within 5km)
         const farSideQuests = sideQuestPlaces.filter((shop) => {
           if (usedSideQuestIds.has(shop.id)) return false;
           if (closeSideQuests.some(close => close.id === shop.id)) return false;
@@ -217,7 +217,7 @@ function generateSinglePlans(params: {
                  (distanceToHangout > 2000 && distanceToHangout <= 5000);
         }).slice(0, 1);
 
-        // Combine close and far side quests
+        // Combine close and far side quests (max 2 total)
         const allSideQuests = [...closeSideQuests, ...farSideQuests];
         allSideQuests.forEach(quest => {
           sideQuests.push({
@@ -229,8 +229,8 @@ function generateSinglePlans(params: {
         });
       }
 
-      // Prefer plans with 2+ side quests, but allow 1 if needed to reach 5 plans
-      if (sideQuests.length < 1) continue;
+      // Don't require minimum side quests to ensure enough plans can be created
+      // Plans can have 0-2 side quests
 
       const planId = `${dining.id}-${hangout.id}`;
       const plan: Plan = {
@@ -310,11 +310,10 @@ function generateMorningPlans(params: {
           { type: 'dining', place: lunch, duration: 60 },
         ];
 
-        // Find side quests (minimum 2 preferred)
-        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedIds, 3);
+        // Find side quests (1-2 per plan)
+        const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout, lunch], usedIds, 2);
 
-        // Prefer plans with 2+ side quests, but allow 1 if needed to reach 5 plans
-        if (sideQuests.length < 1) continue;
+        // Don't require minimum side quests to ensure enough plans can be created
 
         const avgCost = Math.round(((breakfast.priceLevel || 2) + (hangout.priceLevel || 2) + (lunch.priceLevel || 2)) / 3);
         const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 40 + (sideQuests.length * 25);
@@ -389,11 +388,10 @@ function generateAfternoonPlans(params: {
           { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
         ];
 
-        // Find side quests (minimum 2 preferred)
-        const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedIds, 4);
+        // Find side quests (1-2 per plan)
+        const sideQuests = findSideQuests(sideQuestPlaces, [lunch, hangout1, hangout2, dinner], usedIds, 2);
 
-        // Prefer plans with 2+ side quests, but allow 1 if needed to reach 5 plans
-        if (sideQuests.length < 1) continue;
+        // Don't require minimum side quests to ensure enough plans can be created
 
         const avgCost = Math.round(((lunch.priceLevel || 2) + (hangout1.priceLevel || 2) + (hangout2.priceLevel || 2) + (dinner.priceLevel || 2)) / 4);
         const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 60 + (sideQuests.length * 25);
@@ -489,11 +487,10 @@ function generateFullDayPlans(params: {
                 { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
               ];
 
-              // Find side quests (minimum 3 preferred for Full Day)
-              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 5);
+              // Find side quests (1-2 per plan)
+              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedIds, 2);
 
-              // Prefer plans with 3+ side quests, but allow 2 if needed to reach 5 plans
-              if (sideQuests.length < 2) continue;
+              // Don't require minimum side quests to ensure enough plans can be created
 
               const avgCost = Math.round(
                 ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6
@@ -560,9 +557,9 @@ function findSideQuests(
     });
   });
 
-  // Take mostly close side quests, but include 1-2 farther ones
-  const numClose = Math.min(closeSideQuests.length, maxQuests - 1);
-  const numFar = Math.min(farSideQuests.length, Math.min(2, maxQuests - numClose));
+  // Take 1-2 side quests: prioritize close, but include 1 farther one for variety
+  const numClose = Math.min(closeSideQuests.length, 1);
+  const numFar = numClose < maxQuests ? Math.min(farSideQuests.length, 1) : 0;
 
   const selectedQuests = [
     ...closeSideQuests.slice(0, numClose),
