@@ -181,7 +181,8 @@ function generateSinglePlans(params: {
       }
 
       const distance = calculateDistance(dining, hangout);
-      if (distance > 10000) continue;
+      // Keep main locations closer together (max 5km instead of 10km)
+      if (distance > 5000) continue;
 
       const distanceCategory = categorizeDistance(distance);
       const diningDuration = getDiningDuration(partySize);
@@ -195,18 +196,30 @@ function generateSinglePlans(params: {
       else if (distanceCategory === 'bussing') travelTime = 15;
       else if (distanceCategory === 'walking') travelTime = 10;
 
-      // Find nearby side quests (minimum 2 preferred)
+      // Find side quests: mostly close, but 1-2 can be farther for variety
       const sideQuests: ActivityStep[] = [];
       if (sideQuestPlaces && sideQuestPlaces.length > 0) {
-        const nearbySideQuests = sideQuestPlaces.filter((shop) => {
+        // First, find close side quests (within 2km)
+        const closeSideQuests = sideQuestPlaces.filter((shop) => {
           if (usedSideQuestIds.has(shop.id)) return false;
           const distanceToDining = calculateDistance(shop, dining);
           const distanceToHangout = calculateDistance(shop, hangout);
-          // Increased to 2.5km for more flexibility in finding side quests
-          return distanceToDining <= 2500 || distanceToHangout <= 2500;
-        }).slice(0, 3);
+          return distanceToDining <= 2000 || distanceToHangout <= 2000;
+        }).slice(0, 2);
 
-        nearbySideQuests.forEach(quest => {
+        // Then, find 1-2 farther side quests for variety (within 5km)
+        const farSideQuests = sideQuestPlaces.filter((shop) => {
+          if (usedSideQuestIds.has(shop.id)) return false;
+          if (closeSideQuests.some(close => close.id === shop.id)) return false;
+          const distanceToDining = calculateDistance(shop, dining);
+          const distanceToHangout = calculateDistance(shop, hangout);
+          return (distanceToDining > 2000 && distanceToDining <= 5000) ||
+                 (distanceToHangout > 2000 && distanceToHangout <= 5000);
+        }).slice(0, 1);
+
+        // Combine close and far side quests
+        const allSideQuests = [...closeSideQuests, ...farSideQuests];
+        allSideQuests.forEach(quest => {
           sideQuests.push({
             type: 'hangout',
             place: quest,
@@ -279,11 +292,12 @@ function generateMorningPlans(params: {
         const allIds = [breakfast.id, hangout.id, lunch.id];
         if (allIds.some(id => usedIds.has(id))) continue;
 
-        // Check total distance
+        // Check total distance - keep main locations closer together
         const dist1 = calculateDistance(breakfast, hangout);
         const dist2 = calculateDistance(hangout, lunch);
         const totalDistance = dist1 + dist2;
-        if (totalDistance > 15000) continue;
+        // Reduced from 15km to 10km to keep locations closer
+        if (totalDistance > 10000) continue;
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: breakfast, duration: 45 },
@@ -355,7 +369,8 @@ function generateAfternoonPlans(params: {
         const dist2 = calculateDistance(hangout1, hangout2);
         const dist3 = calculateDistance(hangout2, dinner);
         const totalDistance = dist1 + dist2 + dist3;
-        if (totalDistance > 20000) continue;
+        // Reduced from 20km to 12km to keep locations closer
+        if (totalDistance > 12000) continue;
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: lunch, duration: 60 },
@@ -448,7 +463,8 @@ function generateFullDayPlans(params: {
               const dist5 = calculateDistance(hangout3, dinner);
               const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
 
-              if (totalDistance > 35000) continue; // Slightly increased from 30km to 35km
+              // Reduced from 35km to 20km to keep locations closer
+              if (totalDistance > 20000) continue;
 
               const steps: ActivityStep[] = [
                 { type: 'dining', place: breakfast, duration: 45 },
@@ -511,25 +527,42 @@ function findSideQuests(
 ): ActivityStep[] {
   const sideQuests: ActivityStep[] = [];
 
-  for (const quest of sideQuestPlaces) {
-    if (usedIds.has(quest.id)) continue;
-    if (sideQuests.length >= maxQuests) break;
-
-    // Check if within 2.5km of any main location (increased for more flexibility)
-    const isNearby = mainPlaces.some(place => {
+  // First, find close side quests (within 2km of any main location)
+  const closeSideQuests = sideQuestPlaces.filter(quest => {
+    if (usedIds.has(quest.id)) return false;
+    return mainPlaces.some(place => {
       const distance = calculateDistance(quest, place);
-      return distance <= 2500;
+      return distance <= 2000;
     });
+  });
 
-    if (isNearby) {
-      sideQuests.push({
-        type: 'hangout',
-        place: quest,
-        duration: 20,
-      });
-      usedIds.add(quest.id);
-    }
-  }
+  // Then, find farther side quests for variety (2-5km from main locations)
+  const farSideQuests = sideQuestPlaces.filter(quest => {
+    if (usedIds.has(quest.id)) return false;
+    if (closeSideQuests.some(close => close.id === quest.id)) return false;
+    return mainPlaces.some(place => {
+      const distance = calculateDistance(quest, place);
+      return distance > 2000 && distance <= 5000;
+    });
+  });
+
+  // Take mostly close side quests, but include 1-2 farther ones
+  const numClose = Math.min(closeSideQuests.length, maxQuests - 1);
+  const numFar = Math.min(farSideQuests.length, Math.min(2, maxQuests - numClose));
+
+  const selectedQuests = [
+    ...closeSideQuests.slice(0, numClose),
+    ...farSideQuests.slice(0, numFar)
+  ];
+
+  selectedQuests.forEach(quest => {
+    sideQuests.push({
+      type: 'hangout',
+      place: quest,
+      duration: 20,
+    });
+    usedIds.add(quest.id);
+  });
 
   return sideQuests;
 }
