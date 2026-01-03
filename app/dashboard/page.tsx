@@ -21,7 +21,7 @@ import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { useMapBounds } from '@/hooks/useMapBounds';
-import { Sparkles, Home, Heart, Loader2, ChevronRight, X } from 'lucide-react';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
@@ -855,6 +855,7 @@ function DashboardContent() {
                 options={['2', '3', '4', '5', '6', '7', '8', '9+']}
                 value={partySize}
                 onChange={(val) => setPartySize(val as string)}
+                icon={<Users className="h-4 w-4" />}
               />
               <FilterDropdown
                 label="Dining"
