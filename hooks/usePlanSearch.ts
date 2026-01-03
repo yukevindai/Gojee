@@ -182,7 +182,7 @@ export function usePlanSearch() {
     const hangoutRequest: google.maps.places.PlaceSearchRequest = {
       location: new google.maps.LatLng(location.lat, location.lng),
       radius: 3000, // Use larger radius for activities (3km)
-      keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery',
+      keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery landmark monument historical tourist pier waterfront',
     };
 
     const hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
@@ -194,7 +194,8 @@ export function usePlanSearch() {
             'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
             'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
             'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
-            'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater'
+            'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
+            'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier'
           ];
 
           const filteredResults = results.filter((result) => {
@@ -261,6 +262,9 @@ export function usePlanSearch() {
         { keyword: 'ice cream gelato frozen yogurt', type: 'bakery' },
         { keyword: 'bar drinks cocktails beer wine', type: 'bar' },
         { keyword: 'bookstore library books', type: null },
+        { keyword: 'beach waterfront pier ocean seaside', type: null },
+        { keyword: 'tourist attraction landmark monument historic', type: 'tourist_attraction' },
+        { keyword: 'viewpoint scenic vista lookout observation', type: null },
       ];
 
       const sideQuestSearches = sideQuestTypes.map((quest) => {
