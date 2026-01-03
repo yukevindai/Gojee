@@ -192,7 +192,7 @@ export default function PlanSummaryPanel({
       className="fixed bottom-0 left-0 right-0 z-30 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
     >
       {/* Header */}
-      <div className={`sticky top-0 bg-gradient-to-r ${colors.diningGradient} px-6 py-4`}>
+      <div className={`sticky top-0 z-10 bg-gradient-to-r ${colors.diningGradient} px-6 py-4`}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900">{plan.name}</h2>
@@ -214,7 +214,7 @@ export default function PlanSummaryPanel({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-blue-50 border-b border-blue-200 px-6 py-3 overflow-hidden"
+            className="sticky top-[72px] z-[9] bg-blue-50 border-b border-blue-200 px-6 py-3 overflow-hidden"
           >
             <div className="flex items-center gap-2 text-sm text-blue-900">
               <Edit3 className="h-4 w-4" />
