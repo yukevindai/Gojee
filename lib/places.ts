@@ -26,6 +26,7 @@ export interface SearchFilters {
   cuisines?: string[]; // cuisine IDs
   priceRange?: number[]; // price levels 1-4
   sideQuestBudget?: number[]; // price levels for optional stops
+  numberOfPlans?: number; // number of plans to generate (default 5)
 }
 
 export function getPlaceType(diningOptions: string[]): string[] {

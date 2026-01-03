@@ -19,9 +19,10 @@ import PriceFilter, { type PriceLevel } from '@/components/PriceFilter';
 import SideQuestBudgetFilter from '@/components/SideQuestBudgetFilter';
 import PreferencesOnboarding from '@/components/PreferencesOnboarding';
 import SwapBottomSheet from '@/components/SwapBottomSheet';
+import SpinningWheel from '@/components/SpinningWheel';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { useMapBounds } from '@/hooks/useMapBounds';
-import { Sparkles, Home, Heart, Loader2, ChevronRight, X } from 'lucide-react';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
@@ -47,6 +48,7 @@ function DashboardContent() {
   const [cuisines, setCuisines] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<PriceLevel[]>([]);
   const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
+  const [numberOfPlans, setNumberOfPlans] = useState<string>('5');
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
@@ -80,6 +82,9 @@ function DashboardContent() {
   const [alternatives, setAlternatives] = useState<Array<{ place: Place; distanceImpact: string; reason: string }>>([]);
   const [previewPlace, setPreviewPlace] = useState<Place | null>(null);
   const [originalPlanBeforeEdit, setOriginalPlanBeforeEdit] = useState<Plan | null>(null);
+
+  // Spinning wheel state
+  const [isWheelOpen, setIsWheelOpen] = useState(false);
 
   // Get user's geolocation on mount
   useEffect(() => {
@@ -250,6 +255,7 @@ function DashboardContent() {
         cuisines: cuisines.length > 0 ? cuisines : getUserPreferences().cuisines,
         priceRange: priceRange.length > 0 ? priceRange : undefined,
         sideQuestBudget: sideQuestBudget.length > 0 ? sideQuestBudget : undefined,
+        numberOfPlans: numberOfPlans ? parseInt(numberOfPlans) : undefined,
       });
 
       // Expand panel to show results
@@ -649,6 +655,14 @@ function DashboardContent() {
     setOriginalPlanBeforeEdit(null);
   };
 
+  const handleLuckyPick = (plan: Plan) => {
+    // Auto-select and confirm the lucky plan
+    setSelectedPlan(plan.id);
+    setModifiedPlan(plan);
+    setExecutionMode('summary');
+    setIsPanelExpanded(false);
+  };
+
   const handleSwapSideQuest = async (sideQuestIndex: number) => {
     if (!modifiedPlan || !modifiedPlan.sideQuests) return;
 
@@ -852,9 +866,10 @@ function DashboardContent() {
             <div className="flex flex-wrap gap-3">
               <FilterDropdown
                 label="Party Size"
-                options={['2', '3', '4', '5', '6', '7', '8', '9+']}
+                options={['1', '2', '3', '4', '5', '6', '7', '8', '9+']}
                 value={partySize}
                 onChange={(val) => setPartySize(val as string)}
+                icon={<Users className="h-4 w-4" />}
               />
               <FilterDropdown
                 label="Dining"
@@ -881,6 +896,13 @@ function DashboardContent() {
               <SideQuestBudgetFilter
                 value={sideQuestBudget}
                 onChange={setSideQuestBudget}
+              />
+              <FilterDropdown
+                label="# of Plans"
+                options={['3', '5', '7', '10']}
+                value={numberOfPlans}
+                onChange={(val) => setNumberOfPlans(val as string)}
+                icon={<Layers className="h-4 w-4" />}
               />
             </div>
 
@@ -1008,6 +1030,18 @@ function DashboardContent() {
                     <X className="h-5 w-5 text-gray-600" />
                   </button>
                 </div>
+
+                {/* Surprise Me Button */}
+                <motion.button
+                  onClick={() => setIsWheelOpen(true)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 px-4 py-3 text-white font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  Feeling Lucky? Spin the Wheel!
+                  <Sparkles className="h-5 w-5" />
+                </motion.button>
 
                 {plans.map((plan, index) => (
                   <PlanCard
@@ -1147,6 +1181,14 @@ function DashboardContent() {
           selectedPreview={previewPlace}
         />
       )}
+
+      {/* Spinning Wheel Lottery */}
+      <SpinningWheel
+        plans={plans}
+        isOpen={isWheelOpen}
+        onClose={() => setIsWheelOpen(false)}
+        onPlanSelected={handleLuckyPick}
+      />
     </div>
   );
 }

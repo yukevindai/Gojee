@@ -11,6 +11,7 @@ interface FilterDropdownProps {
   value: string | string[];
   onChange: (value: string | string[]) => void;
   multiSelect?: boolean;
+  icon?: React.ReactNode;
 }
 
 export default function FilterDropdown({
@@ -19,6 +20,7 @@ export default function FilterDropdown({
   value,
   onChange,
   multiSelect = false,
+  icon,
 }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -60,6 +62,7 @@ export default function FilterDropdown({
             : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
         )}
       >
+        {icon && <span className="flex items-center">{icon}</span>}
         <span>{getDisplayText()}</span>
         <ChevronDown
           className={clsx(
