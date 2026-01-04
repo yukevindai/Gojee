@@ -218,7 +218,7 @@ function generateSinglePlans(params: {
   numberOfPlans: number;
 }): Plan[] {
   const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
-  const plans: Plan[] = [];
+  const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
   // Increased from 10 to 20 to allow more combinations for Date Night
@@ -297,22 +297,41 @@ function generateSinglePlans(params: {
         sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
       };
 
-      plans.push(plan);
+      candidatePlans.push(plan);
       planIndex++;
-
-      // Stop once we have the desired number of plans
-      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= numberOfPlans) break;
   }
 
-  plans.sort((a, b) => {
+  // Sort all candidate plans by rating
+  candidatePlans.sort((a, b) => {
     const ratingA = a.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
     const ratingB = b.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
     return ratingB - ratingA;
   });
 
-  return plans.slice(0, numberOfPlans);
+  // Select plans ensuring no duplicate dining or hangout venues
+  const finalPlans: Plan[] = [];
+  const usedDiningIds = new Set<string>();
+  const usedHangoutIds = new Set<string>();
+
+  for (const plan of candidatePlans) {
+    if (finalPlans.length >= numberOfPlans) break;
+
+    const diningId = plan.steps[0].place.id;
+    const hangoutId = plan.steps[1].place.id;
+
+    // Skip if this dining or hangout venue is already used
+    if (usedDiningIds.has(diningId) || usedHangoutIds.has(hangoutId)) {
+      continue;
+    }
+
+    // Add this plan and mark venues as used
+    finalPlans.push(plan);
+    usedDiningIds.add(diningId);
+    usedHangoutIds.add(hangoutId);
+  }
+
+  return finalPlans;
 }
 
 function generateMorningPlans(params: {
