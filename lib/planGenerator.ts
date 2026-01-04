@@ -76,28 +76,18 @@ function timeToMinutes(timeStr: string): number {
 export function planFitsTimeWindow(plan: Plan, startTime?: string, endTime?: string): boolean {
   if (!startTime && !endTime) return true; // No time constraints
 
-  // Get default start times based on plan type
-  const defaultStartTimes: Record<string, number> = {
-    'morning': 8 * 60, // 8 AM
-    'afternoon': 12 * 60, // 12 PM
-    'fullday': 8 * 60, // 8 AM
-    'single': 18 * 60, // 6 PM
-    'dining': 12 * 60, // 12 PM
-    'activity': 10 * 60, // 10 AM
-  };
-
-  const planType = plan.id.split('-')[0] as keyof typeof defaultStartTimes;
-  const planStartMinutes = defaultStartTimes[planType] || 12 * 60;
-  const planEndMinutes = planStartMinutes + plan.totalDuration;
-
   const startMinutes = startTime ? timeToMinutes(startTime) : 0;
   const endMinutes = endTime ? timeToMinutes(endTime) : 24 * 60;
 
-  // Plan must start at or after the specified start time
-  if (startTime && planStartMinutes < startMinutes) return false;
+  // Calculate available time window
+  const availableTime = endMinutes - startMinutes;
 
-  // Plan must end at or before the specified end time
-  if (endTime && planEndMinutes > endMinutes) return false;
+  // Check if plan duration fits within the available time window
+  // We're being flexible here - as long as the plan can fit within the time window,
+  // we consider it valid (the plan can start anytime within the window as long as it fits)
+  if (plan.totalDuration > availableTime) {
+    return false;
+  }
 
   return true;
 }
@@ -228,7 +218,7 @@ function generateSinglePlans(params: {
   numberOfPlans: number;
 }): Plan[] {
   const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
-  const plans: Plan[] = [];
+  const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
   // Increased from 10 to 20 to allow more combinations for Date Night
@@ -307,22 +297,41 @@ function generateSinglePlans(params: {
         sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
       };
 
-      plans.push(plan);
+      candidatePlans.push(plan);
       planIndex++;
-
-      // Stop once we have the desired number of plans
-      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= numberOfPlans) break;
   }
 
-  plans.sort((a, b) => {
+  // Sort all candidate plans by rating
+  candidatePlans.sort((a, b) => {
     const ratingA = a.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
     const ratingB = b.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
     return ratingB - ratingA;
   });
 
-  return plans.slice(0, numberOfPlans);
+  // Select plans ensuring no duplicate dining or hangout venues
+  const finalPlans: Plan[] = [];
+  const usedDiningIds = new Set<string>();
+  const usedHangoutIds = new Set<string>();
+
+  for (const plan of candidatePlans) {
+    if (finalPlans.length >= numberOfPlans) break;
+
+    const diningId = plan.steps[0].place.id;
+    const hangoutId = plan.steps[1].place.id;
+
+    // Skip if this dining or hangout venue is already used
+    if (usedDiningIds.has(diningId) || usedHangoutIds.has(hangoutId)) {
+      continue;
+    }
+
+    // Add this plan and mark venues as used
+    finalPlans.push(plan);
+    usedDiningIds.add(diningId);
+    usedHangoutIds.add(hangoutId);
+  }
+
+  return finalPlans;
 }
 
 function generateMorningPlans(params: {
@@ -335,7 +344,7 @@ function generateMorningPlans(params: {
   numberOfPlans: number;
 }): Plan[] {
   const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
-  const plans: Plan[] = [];
+  const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
   const topBreakfast = breakfastPlaces.slice(0, 8);
@@ -386,16 +395,43 @@ function generateMorningPlans(params: {
           sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
         };
 
-        plans.push(plan);
+        candidatePlans.push(plan);
         planIndex++;
-        if (plans.length >= numberOfPlans) break;
       }
-      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= numberOfPlans) break;
   }
 
-  return sortAndLimitPlans(plans, numberOfPlans);
+  // Sort all candidate plans by rating
+  candidatePlans.sort((a, b) => {
+    const ratingA = a.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
+    const ratingB = b.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
+    return ratingB - ratingA;
+  });
+
+  // Select plans ensuring no duplicate dining venues (breakfast, lunch)
+  // Hangout venues can repeat across plans to allow for more plan diversity
+  const finalPlans: Plan[] = [];
+  const usedBreakfastIds = new Set<string>();
+  const usedLunchIds = new Set<string>();
+
+  for (const plan of candidatePlans) {
+    if (finalPlans.length >= numberOfPlans) break;
+
+    const breakfastId = plan.steps[0].place.id;
+    const lunchId = plan.steps[2].place.id;
+
+    // Skip if any dining venue is already used
+    if (usedBreakfastIds.has(breakfastId) || usedLunchIds.has(lunchId)) {
+      continue;
+    }
+
+    // Add this plan and mark dining venues as used
+    finalPlans.push(plan);
+    usedBreakfastIds.add(breakfastId);
+    usedLunchIds.add(lunchId);
+  }
+
+  return finalPlans;
 }
 
 function generateAfternoonPlans(params: {
@@ -408,7 +444,7 @@ function generateAfternoonPlans(params: {
   numberOfPlans: number;
 }): Plan[] {
   const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
-  const plans: Plan[] = [];
+  const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
   const topLunch = lunchPlaces.slice(0, 8);
@@ -462,16 +498,43 @@ function generateAfternoonPlans(params: {
           sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
         };
 
-        plans.push(plan);
+        candidatePlans.push(plan);
         planIndex++;
-        if (plans.length >= numberOfPlans) break;
       }
-      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= numberOfPlans) break;
   }
 
-  return sortAndLimitPlans(plans, numberOfPlans);
+  // Sort all candidate plans by rating
+  candidatePlans.sort((a, b) => {
+    const ratingA = a.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
+    const ratingB = b.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
+    return ratingB - ratingA;
+  });
+
+  // Select plans ensuring no duplicate dining venues (lunch, dinner)
+  // Hangout venues can repeat across plans to allow for more plan diversity
+  const finalPlans: Plan[] = [];
+  const usedLunchIds = new Set<string>();
+  const usedDinnerIds = new Set<string>();
+
+  for (const plan of candidatePlans) {
+    if (finalPlans.length >= numberOfPlans) break;
+
+    const lunchId = plan.steps[0].place.id;
+    const dinnerId = plan.steps[3].place.id;
+
+    // Skip if any dining venue is already used
+    if (usedLunchIds.has(lunchId) || usedDinnerIds.has(dinnerId)) {
+      continue;
+    }
+
+    // Add this plan and mark dining venues as used
+    finalPlans.push(plan);
+    usedLunchIds.add(lunchId);
+    usedDinnerIds.add(dinnerId);
+  }
+
+  return finalPlans;
 }
 
 function generateFullDayPlans(params: {
@@ -485,7 +548,7 @@ function generateFullDayPlans(params: {
   numberOfPlans: number;
 }): Plan[] {
   const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
-  const plans: Plan[] = [];
+  const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
   // Increased pool sizes for more combinations
@@ -560,23 +623,49 @@ function generateFullDayPlans(params: {
                 sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
               };
 
-              plans.push(plan);
+              candidatePlans.push(plan);
               planIndex++;
-
-              if (plans.length >= numberOfPlans) break;
             }
-            if (plans.length >= numberOfPlans) break;
           }
-          if (plans.length >= numberOfPlans) break;
         }
-        if (plans.length >= numberOfPlans) break;
       }
-      if (plans.length >= numberOfPlans) break;
     }
-    if (plans.length >= numberOfPlans) break;
   }
 
-  return sortAndLimitPlans(plans, numberOfPlans);
+  // Sort all candidate plans by rating
+  candidatePlans.sort((a, b) => {
+    const ratingA = a.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
+    const ratingB = b.steps.reduce((sum, step) => sum + (step.place.rating || 0), 0);
+    return ratingB - ratingA;
+  });
+
+  // Select plans ensuring no duplicate dining venues (breakfast, lunch, dinner)
+  // Hangout venues can repeat across plans to allow for more plan diversity
+  const finalPlans: Plan[] = [];
+  const usedBreakfastIds = new Set<string>();
+  const usedLunchIds = new Set<string>();
+  const usedDinnerIds = new Set<string>();
+
+  for (const plan of candidatePlans) {
+    if (finalPlans.length >= numberOfPlans) break;
+
+    const breakfastId = plan.steps[0].place.id;
+    const lunchId = plan.steps[2].place.id;
+    const dinnerId = plan.steps[5].place.id;
+
+    // Skip if any dining venue is already used
+    if (usedBreakfastIds.has(breakfastId) || usedLunchIds.has(lunchId) || usedDinnerIds.has(dinnerId)) {
+      continue;
+    }
+
+    // Add this plan and mark dining venues as used
+    finalPlans.push(plan);
+    usedBreakfastIds.add(breakfastId);
+    usedLunchIds.add(lunchId);
+    usedDinnerIds.add(dinnerId);
+  }
+
+  return finalPlans;
 }
 
 function findSideQuests(

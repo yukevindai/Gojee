@@ -221,23 +221,33 @@ function DashboardContent() {
       setPartySize('2');
       setDining(['Breakfast', 'Lunch']);
       setHangout('Chill');
+      setStartTime('7 AM');
+      setEndTime('1 PM');
     } else if (newKey === 'afternoon-plan') {
       setPartySize('4');
       setDining(['Lunch', 'Dinner']);
       setHangout('Chill');
+      setStartTime('12 PM');
+      setEndTime('9 PM');
     } else if (newKey === 'full-day-plan') {
       setPartySize('4');
       setDining(['Breakfast', 'Lunch', 'Dinner']);
       setHangout('Chill');
+      setStartTime('8 AM');
+      setEndTime('10 PM');
     } else if (newKey === 'date-night') {
       setPartySize('2');
       setDining(['Dinner']);
       setHangout('Date');
+      setStartTime('6 PM');
+      setEndTime('11 PM');
     } else {
       // Clear filters when deselecting
       setPartySize('');
       setDining([]);
       setHangout('');
+      setStartTime('');
+      setEndTime('');
     }
   };
 

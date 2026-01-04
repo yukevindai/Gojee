@@ -41,6 +41,15 @@ export function usePlanSearch() {
     });
   };
 
+  // Helper function to filter dining places by minimum rating (4.0+)
+  const filterByRating = (places: Place[], minRating: number = 4.0): Place[] => {
+    return places.filter(place => {
+      // Only include places with ratings of 4.0 or higher
+      if (!place.rating) return false; // Exclude places without ratings
+      return place.rating >= minRating;
+    });
+  };
+
   // Helper function to perform search at a specific radius
   const performSearch = async (
     service: google.maps.places.PlacesService,
@@ -103,10 +112,11 @@ export function usePlanSearch() {
               return types.some(type => validFoodTypes.includes(type));
             });
 
-            // Map results and filter by price
+            // Map results and filter by price and rating (4.0+)
             const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
             const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
-            resolve(priceFilteredPlaces);
+            const ratingFilteredPlaces = filterByRating(priceFilteredPlaces);
+            resolve(ratingFilteredPlaces);
           } else {
             reject(new Error(`${mealType} search failed: ${status}`));
           }
@@ -167,10 +177,11 @@ export function usePlanSearch() {
                 return types.some(type => validFoodTypes.includes(type));
               });
 
-              // Map results and filter by price
+              // Map results and filter by price and rating (4.0+)
               const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
               const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
-              resolve(priceFilteredPlaces);
+              const ratingFilteredPlaces = filterByRating(priceFilteredPlaces);
+              resolve(ratingFilteredPlaces);
             } else {
               reject(new Error(`Dining search failed: ${status}`));
             }
