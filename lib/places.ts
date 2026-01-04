@@ -29,6 +29,8 @@ export interface SearchFilters {
   numberOfPlans?: number; // number of plans to generate (default 5)
   includeDining?: boolean; // whether to include dining in plans
   includeActivities?: boolean; // whether to include activities in plans
+  startTime?: string; // optional start time (e.g., "9 AM")
+  endTime?: string; // optional end time (e.g., "5 PM")
 }
 
 export function getPlaceType(diningOptions: string[]): string[] {

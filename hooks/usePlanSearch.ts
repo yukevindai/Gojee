@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { Place, SearchFilters } from '@/lib/places';
 import { getPlaceType } from '@/lib/places';
-import { generatePlans, generateDiningOnlyPlans, generateActivityOnlyPlans, getHangoutPlaceTypes, type Plan } from '@/lib/planGenerator';
+import { generatePlans, generateDiningOnlyPlans, generateActivityOnlyPlans, getHangoutPlaceTypes, planFitsTimeWindow, type Plan } from '@/lib/planGenerator';
 import { getCuisineKeywords } from '@/lib/cuisines';
 
 function mapPlaceResults(results: google.maps.places.PlaceResult[]): Place[] {
@@ -308,16 +308,21 @@ export function usePlanSearch() {
     // Generate plans from the search results based on includeDining and includeActivities
     if (!includeDining && includeActivities) {
       // Activity-only plans
-      return generateActivityOnlyPlans({
+      let plans = generateActivityOnlyPlans({
         hangoutPlaces,
         hangoutType: hangout,
         partySize,
         sideQuestPlaces: coffeeShops,
         numberOfPlans: filters.numberOfPlans || 5,
       });
+      // Filter by time if specified
+      if (filters.startTime || filters.endTime) {
+        plans = plans.filter(plan => planFitsTimeWindow(plan, filters.startTime, filters.endTime));
+      }
+      return plans;
     } else if (includeDining && !includeActivities) {
       // Dining-only plans
-      return generateDiningOnlyPlans({
+      let plans = generateDiningOnlyPlans({
         breakfastPlaces,
         lunchPlaces,
         dinnerPlaces,
@@ -325,6 +330,11 @@ export function usePlanSearch() {
         sideQuestPlaces: coffeeShops,
         numberOfPlans: filters.numberOfPlans || 5,
       });
+      // Filter by time if specified
+      if (filters.startTime || filters.endTime) {
+        plans = plans.filter(plan => planFitsTimeWindow(plan, filters.startTime, filters.endTime));
+      }
+      return plans;
     } else {
       // Standard plans with both dining and activities
       return generatePlans({
@@ -338,6 +348,8 @@ export function usePlanSearch() {
         sideQuestPlaces: coffeeShops,
         planType,
         numberOfPlans: filters.numberOfPlans || 5,
+        startTime: filters.startTime,
+        endTime: filters.endTime,
       } as any); // Cast for compatibility with old interface
     }
   };

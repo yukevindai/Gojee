@@ -29,6 +29,8 @@ export interface GeneratePlansOptions {
   sideQuestPlaces?: Place[]; // Optional side quest venues (coffee, arcade, gym, etc.)
   planType: 'morning' | 'afternoon' | 'fullday' | 'single'; // Type of plan to generate
   numberOfPlans?: number; // Number of plans to generate (default 5)
+  startTime?: string; // Optional start time (e.g., "9 AM")
+  endTime?: string; // Optional end time (e.g., "5 PM")
 }
 
 function calculateDistance(place1: Place, place2: Place): number {
@@ -51,6 +53,53 @@ function categorizeDistance(distance: number): 'walking' | 'bussing' | 'driving'
   if (distance <= 1500) return 'walking'; // 0-1.5km
   if (distance <= 5000) return 'bussing'; // 1.5-5km
   return 'driving'; // 5km+
+}
+
+// Convert time string like "9 AM" or "5 PM" to minutes from midnight
+function timeToMinutes(timeStr: string): number {
+  const match = timeStr.match(/^(\d+)\s*(AM|PM)$/i);
+  if (!match) return 0;
+
+  let hours = parseInt(match[1]);
+  const period = match[2].toUpperCase();
+
+  if (period === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (period === 'AM' && hours === 12) {
+    hours = 0;
+  }
+
+  return hours * 60;
+}
+
+// Check if a plan fits within the specified time window
+export function planFitsTimeWindow(plan: Plan, startTime?: string, endTime?: string): boolean {
+  if (!startTime && !endTime) return true; // No time constraints
+
+  // Get default start times based on plan type
+  const defaultStartTimes: Record<string, number> = {
+    'morning': 8 * 60, // 8 AM
+    'afternoon': 12 * 60, // 12 PM
+    'fullday': 8 * 60, // 8 AM
+    'single': 18 * 60, // 6 PM
+    'dining': 12 * 60, // 12 PM
+    'activity': 10 * 60, // 10 AM
+  };
+
+  const planType = plan.id.split('-')[0] as keyof typeof defaultStartTimes;
+  const planStartMinutes = defaultStartTimes[planType] || 12 * 60;
+  const planEndMinutes = planStartMinutes + plan.totalDuration;
+
+  const startMinutes = startTime ? timeToMinutes(startTime) : 0;
+  const endMinutes = endTime ? timeToMinutes(endTime) : 24 * 60;
+
+  // Plan must start at or after the specified start time
+  if (startTime && planStartMinutes < startMinutes) return false;
+
+  // Plan must end at or before the specified end time
+  if (endTime && planEndMinutes > endMinutes) return false;
+
+  return true;
 }
 
 function getHangoutDuration(hangoutType: string): number {
@@ -130,31 +179,44 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 }
 
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
-  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5 } = options;
+  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5, startTime, endTime } = options;
 
   // For backward compatibility, if old parameters are passed
   const diningPlaces = (options as any).diningPlaces || [];
   const coffeeShops = (options as any).coffeeShops || sideQuestPlaces;
 
+  let plans: Plan[] = [];
+
   // If using old interface (single dining type)
   if (diningPlaces.length > 0 && planType === 'single') {
-    return generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans });
+    plans = generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans });
+  } else {
+    // Generate plans based on plan type
+    switch (planType) {
+      case 'morning':
+        plans = generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        break;
+      case 'afternoon':
+        plans = generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        break;
+      case 'fullday':
+        plans = generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        break;
+      case 'single':
+      default:
+        // Use first available dining category
+        const singleDining = dinnerPlaces.length > 0 ? dinnerPlaces : (lunchPlaces.length > 0 ? lunchPlaces : breakfastPlaces);
+        plans = generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        break;
+    }
   }
 
-  // Generate plans based on plan type
-  switch (planType) {
-    case 'morning':
-      return generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
-    case 'afternoon':
-      return generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
-    case 'fullday':
-      return generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
-    case 'single':
-    default:
-      // Use first available dining category
-      const singleDining = dinnerPlaces.length > 0 ? dinnerPlaces : (lunchPlaces.length > 0 ? lunchPlaces : breakfastPlaces);
-      return generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+  // Filter plans based on time constraints if specified
+  if (startTime || endTime) {
+    plans = plans.filter(plan => planFitsTimeWindow(plan, startTime, endTime));
   }
+
+  return plans;
 }
 
 function generateSinglePlans(params: {
