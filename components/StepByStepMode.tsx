@@ -58,6 +58,8 @@ export default function StepByStepMode({
   const [delayMinutes, setDelayMinutes] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+  const [shareMessage, setShareMessage] = useState('');
 
   useEffect(() => {
     setIsSaved(isPlanSaved(plan.id));
@@ -206,17 +208,26 @@ export default function StepByStepMode({
       url: window.location.href,
     };
 
-    if (navigator.share) {
-      try {
+    try {
+      if (navigator.share) {
         await navigator.share(shareData);
-      } catch (err) {
-        console.log('Share cancelled or failed:', err);
+        setShareMessage('Shared successfully!');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      } else {
+        await navigator.clipboard.writeText(
+          `${shareData.text}\n${currentStep.place.address}\n\nView at: ${window.location.href}`
+        );
+        setShareMessage('Link copied to clipboard!');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
       }
-    } else {
-      navigator.clipboard.writeText(
-        `${shareData.text}\n${currentStep.place.address}`
-      );
-      alert('Plan details copied to clipboard!');
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setShareMessage('Failed to share');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      }
     }
   };
 
@@ -574,6 +585,21 @@ export default function StepByStepMode({
             >
               <Heart className="h-4 w-4 fill-current" />
               <span className="text-sm font-medium">Plan saved!</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Share Toast */}
+        <AnimatePresence>
+          {showShareToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="text-sm font-medium">{shareMessage}</span>
             </motion.div>
           )}
         </AnimatePresence>
