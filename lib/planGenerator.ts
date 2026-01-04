@@ -76,28 +76,18 @@ function timeToMinutes(timeStr: string): number {
 export function planFitsTimeWindow(plan: Plan, startTime?: string, endTime?: string): boolean {
   if (!startTime && !endTime) return true; // No time constraints
 
-  // Get default start times based on plan type
-  const defaultStartTimes: Record<string, number> = {
-    'morning': 8 * 60, // 8 AM
-    'afternoon': 12 * 60, // 12 PM
-    'fullday': 8 * 60, // 8 AM
-    'single': 18 * 60, // 6 PM
-    'dining': 12 * 60, // 12 PM
-    'activity': 10 * 60, // 10 AM
-  };
-
-  const planType = plan.id.split('-')[0] as keyof typeof defaultStartTimes;
-  const planStartMinutes = defaultStartTimes[planType] || 12 * 60;
-  const planEndMinutes = planStartMinutes + plan.totalDuration;
-
   const startMinutes = startTime ? timeToMinutes(startTime) : 0;
   const endMinutes = endTime ? timeToMinutes(endTime) : 24 * 60;
 
-  // Plan must start at or after the specified start time
-  if (startTime && planStartMinutes < startMinutes) return false;
+  // Calculate available time window
+  const availableTime = endMinutes - startMinutes;
 
-  // Plan must end at or before the specified end time
-  if (endTime && planEndMinutes > endMinutes) return false;
+  // Check if plan duration fits within the available time window
+  // We're being flexible here - as long as the plan can fit within the time window,
+  // we consider it valid (the plan can start anytime within the window as long as it fits)
+  if (plan.totalDuration > availableTime) {
+    return false;
+  }
 
   return true;
 }
