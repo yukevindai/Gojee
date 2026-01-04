@@ -22,7 +22,7 @@ import SwapBottomSheet from '@/components/SwapBottomSheet';
 import SpinningWheel from '@/components/SpinningWheel';
 import { usePlanSearch } from '@/hooks/usePlanSearch';
 import { useMapBounds } from '@/hooks/useMapBounds';
-import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers, UtensilsCrossed, MapPin } from 'lucide-react';
+import { Sparkles, Home, Heart, Loader2, ChevronRight, X, Users, Layers, UtensilsCrossed, MapPin, Clock } from 'lucide-react';
 import { getColorSchemeForIndex, colorSchemes } from '@/lib/colorSchemes';
 import { deemphasizedMapStyle } from '@/lib/mapStyles';
 import type { Place } from '@/lib/places';
@@ -50,6 +50,8 @@ function DashboardContent() {
   const [sideQuestBudget, setSideQuestBudget] = useState<PriceLevel[]>([]);
   const [numberOfPlans, setNumberOfPlans] = useState<string>('5');
   const [includeActivities, setIncludeActivities] = useState<string>('Yes');
+  const [startTime, setStartTime] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
 
   // QuickKey state
   const [selectedQuickKey, setSelectedQuickKey] = useState<string>('');
@@ -280,6 +282,8 @@ function DashboardContent() {
         numberOfPlans: numberOfPlans ? parseInt(numberOfPlans) : undefined,
         includeDining: !dining.includes('No Dining'),
         includeActivities: includeActivities === 'Yes',
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
       });
 
       // Expand panel to show results
@@ -935,6 +939,20 @@ function DashboardContent() {
                 value={numberOfPlans}
                 onChange={(val) => setNumberOfPlans(val as string)}
                 icon={<Layers className="h-4 w-4" />}
+              />
+              <FilterDropdown
+                label="Start Time"
+                options={['6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM']}
+                value={startTime}
+                onChange={(val) => setStartTime(val as string)}
+                icon={<Clock className="h-4 w-4" />}
+              />
+              <FilterDropdown
+                label="End Time"
+                options={['10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM']}
+                value={endTime}
+                onChange={(val) => setEndTime(val as string)}
+                icon={<Clock className="h-4 w-4" />}
               />
             </div>
 
