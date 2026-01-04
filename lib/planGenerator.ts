@@ -408,28 +408,26 @@ function generateMorningPlans(params: {
     return ratingB - ratingA;
   });
 
-  // Select plans ensuring no duplicate venues
+  // Select plans ensuring no duplicate dining venues (breakfast, lunch)
+  // Hangout venues can repeat across plans to allow for more plan diversity
   const finalPlans: Plan[] = [];
   const usedBreakfastIds = new Set<string>();
   const usedLunchIds = new Set<string>();
-  const usedHangoutIds = new Set<string>();
 
   for (const plan of candidatePlans) {
     if (finalPlans.length >= numberOfPlans) break;
 
     const breakfastId = plan.steps[0].place.id;
-    const hangoutId = plan.steps[1].place.id;
     const lunchId = plan.steps[2].place.id;
 
-    // Skip if any venue is already used
-    if (usedBreakfastIds.has(breakfastId) || usedHangoutIds.has(hangoutId) || usedLunchIds.has(lunchId)) {
+    // Skip if any dining venue is already used
+    if (usedBreakfastIds.has(breakfastId) || usedLunchIds.has(lunchId)) {
       continue;
     }
 
-    // Add this plan and mark venues as used
+    // Add this plan and mark dining venues as used
     finalPlans.push(plan);
     usedBreakfastIds.add(breakfastId);
-    usedHangoutIds.add(hangoutId);
     usedLunchIds.add(lunchId);
   }
 
@@ -513,31 +511,26 @@ function generateAfternoonPlans(params: {
     return ratingB - ratingA;
   });
 
-  // Select plans ensuring no duplicate venues
+  // Select plans ensuring no duplicate dining venues (lunch, dinner)
+  // Hangout venues can repeat across plans to allow for more plan diversity
   const finalPlans: Plan[] = [];
   const usedLunchIds = new Set<string>();
   const usedDinnerIds = new Set<string>();
-  const usedHangoutIds = new Set<string>();
 
   for (const plan of candidatePlans) {
     if (finalPlans.length >= numberOfPlans) break;
 
     const lunchId = plan.steps[0].place.id;
-    const hangout1Id = plan.steps[1].place.id;
-    const hangout2Id = plan.steps[2].place.id;
     const dinnerId = plan.steps[3].place.id;
 
-    // Skip if any venue is already used
-    if (usedLunchIds.has(lunchId) || usedHangoutIds.has(hangout1Id) ||
-        usedHangoutIds.has(hangout2Id) || usedDinnerIds.has(dinnerId)) {
+    // Skip if any dining venue is already used
+    if (usedLunchIds.has(lunchId) || usedDinnerIds.has(dinnerId)) {
       continue;
     }
 
-    // Add this plan and mark venues as used
+    // Add this plan and mark dining venues as used
     finalPlans.push(plan);
     usedLunchIds.add(lunchId);
-    usedHangoutIds.add(hangout1Id);
-    usedHangoutIds.add(hangout2Id);
     usedDinnerIds.add(dinnerId);
   }
 
