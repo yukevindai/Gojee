@@ -622,14 +622,11 @@ function generateFullDayPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // For Full Day plans, use much larger activity pools to ensure variety
-  // Afternoon uses: poolSize = min(numberOfPlans * 3, 50), hangoutPoolSize = min(numberOfPlans * 5, 70)
-  // Full Day needs significantly more activities (3 per plan) so use 3x Afternoon hangout pool
-  const afternoonDiningPool = Math.min(numberOfPlans * 3, 50);
-  const afternoonHangoutPool = Math.min(numberOfPlans * 5, 70);
-
-  const diningPoolSize = Math.min(afternoonDiningPool * 2, 30); // Twice Afternoon dining, capped at 30
-  const hangoutPoolSize = Math.min(afternoonHangoutPool * 3, 120); // TRIPLE Afternoon hangout for more activity variety
+  // For Full Day plans, use HUGE activity pools but SMALLER dining pools
+  // This ensures we can explore all dining combinations while having massive activity variety
+  // Strategy: Small dining pools (10 each) = 1000 total combos, huge activity pool (120)
+  const diningPoolSize = 10; // Fixed small pool to ensure all combos are explored
+  const hangoutPoolSize = Math.min(numberOfPlans * 20, 120); // 4x larger than before for massive variety
 
   const topBreakfast = breakfastPlaces.slice(0, diningPoolSize);
   const topLunch = lunchPlaces.slice(0, diningPoolSize);
@@ -637,8 +634,8 @@ function generateFullDayPlans(params: {
   const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
 
   let planIndex = 0;
-  // Generate many candidates to ensure we have enough variety for the smart fallback system
-  const maxCandidates = 2000; // Increased from 1500 to accommodate larger hangout pools
+  // With 10×10×10 = 1000 dining combos and 10 hangout combos each = 10,000 max candidates
+  const maxCandidates = 10000; // High enough to explore all combinations
 
   // Iterate through different combinations of breakfast, lunch, dinner, and 3 hangouts
   outerLoop: for (const breakfast of topBreakfast) {
@@ -647,9 +644,9 @@ function generateFullDayPlans(params: {
         // Need at least 3 hangout locations
         if (topHangout.length < 3) break;
 
-        // Limit hangout combinations per dining combo to ensure we explore all dining venues
+        // Allow more hangout combinations per dining combo since we have a huge hangout pool
         let hangoutCombosForThisDining = 0;
-        const maxHangoutCombosPerDining = 5; // Increased from 3 to 5 for more activity variety
+        const maxHangoutCombosPerDining = 10; // Increased to 10 for maximum activity variety
 
         // Try different combinations of 3 hangout locations
         hangoutLoop: for (let i = 0; i < topHangout.length - 2; i++) {
