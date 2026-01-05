@@ -650,7 +650,7 @@ function generateFullDayPlans(params: {
         const maxHangoutCombosPerDining = 3; // Only try 3 hangout combos per dining combo
 
         // Try different combinations of 3 hangout locations
-        for (let i = 0; i < topHangout.length - 2; i++) {
+        hangoutLoop: for (let i = 0; i < topHangout.length - 2; i++) {
           for (let j = i + 1; j < topHangout.length - 1; j++) {
             for (let k = j + 1; k < topHangout.length; k++) {
               // Early exit if we have enough candidates
@@ -660,7 +660,7 @@ function generateFullDayPlans(params: {
 
               // Limit hangout combinations for this dining combo
               if (hangoutCombosForThisDining >= maxHangoutCombosPerDining) {
-                break; // Move to next dinner
+                break hangoutLoop; // Break out of all 3 hangout loops to move to next dinner
               }
 
               const hangout1 = topHangout[i];
