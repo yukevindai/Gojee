@@ -309,26 +309,24 @@ function generateSinglePlans(params: {
     return ratingB - ratingA;
   });
 
-  // Select plans ensuring no duplicate dining or hangout venues
+  // Select plans ensuring no duplicate dining venues
+  // Allow hangout venues to repeat to ensure we can generate enough plans
   const finalPlans: Plan[] = [];
   const usedDiningIds = new Set<string>();
-  const usedHangoutIds = new Set<string>();
 
   for (const plan of candidatePlans) {
     if (finalPlans.length >= numberOfPlans) break;
 
     const diningId = plan.steps[0].place.id;
-    const hangoutId = plan.steps[1].place.id;
 
-    // Skip if this dining or hangout venue is already used
-    if (usedDiningIds.has(diningId) || usedHangoutIds.has(hangoutId)) {
+    // Skip if this dining venue is already used
+    if (usedDiningIds.has(diningId)) {
       continue;
     }
 
-    // Add this plan and mark venues as used
+    // Add this plan and mark dining venue as used
     finalPlans.push(plan);
     usedDiningIds.add(diningId);
-    usedHangoutIds.add(hangoutId);
   }
 
   return finalPlans;
@@ -409,7 +407,7 @@ function generateMorningPlans(params: {
   });
 
   // Select plans ensuring no duplicate dining venues (breakfast, lunch)
-  // Hangout venues can repeat across plans to allow for more plan diversity
+  // Allow hangout venues to repeat to ensure we can generate enough plans
   const finalPlans: Plan[] = [];
   const usedBreakfastIds = new Set<string>();
   const usedLunchIds = new Set<string>();
@@ -512,7 +510,7 @@ function generateAfternoonPlans(params: {
   });
 
   // Select plans ensuring no duplicate dining venues (lunch, dinner)
-  // Hangout venues can repeat across plans to allow for more plan diversity
+  // Allow hangout venues to repeat to ensure we can generate enough plans
   const finalPlans: Plan[] = [];
   const usedLunchIds = new Set<string>();
   const usedDinnerIds = new Set<string>();
@@ -640,7 +638,7 @@ function generateFullDayPlans(params: {
   });
 
   // Select plans ensuring no duplicate dining venues (breakfast, lunch, dinner)
-  // Hangout venues can repeat across plans to allow for more plan diversity
+  // Allow hangout venues to repeat to ensure we can generate enough plans
   const finalPlans: Plan[] = [];
   const usedBreakfastIds = new Set<string>();
   const usedLunchIds = new Set<string>();
