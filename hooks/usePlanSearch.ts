@@ -41,23 +41,12 @@ export function usePlanSearch() {
     });
   };
 
-  // Helper function to filter dining places by minimum rating (4.0+)
-  const filterByRating = (places: Place[], minRating: number = 4.0): Place[] => {
-    // First, try to get places with 4.0+ rating
-    const highRatedPlaces = places.filter(place => {
-      if (!place.rating) return false;
-      return place.rating >= minRating;
-    });
-
-    // If we have enough high-rated places (at least 8), use them
-    if (highRatedPlaces.length >= 8) {
-      return highRatedPlaces;
-    }
-
-    // Otherwise, include places with 3.5+ rating to ensure we have enough options
+  // Helper function to filter dining places by minimum rating (3.5+)
+  const filterByRating = (places: Place[], minRating: number = 3.5): Place[] => {
     return places.filter(place => {
-      if (!place.rating) return true; // Include unrated places as fallback
-      return place.rating >= 3.5;
+      // Only include places with 3.5+ star ratings
+      if (!place.rating) return false; // Exclude places without ratings
+      return place.rating >= minRating;
     });
   };
 
@@ -123,7 +112,7 @@ export function usePlanSearch() {
               return types.some(type => validFoodTypes.includes(type));
             });
 
-            // Map results and filter by price and rating (4.0+)
+            // Map results and filter by price and rating (3.5+)
             // Increased from 20 to 40 to get more venues before filtering
             const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 40));
             const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
@@ -189,7 +178,7 @@ export function usePlanSearch() {
                 return types.some(type => validFoodTypes.includes(type));
               });
 
-              // Map results and filter by price and rating (4.0+)
+              // Map results and filter by price and rating (3.5+)
               // Increased from 20 to 40 to get more venues before filtering
               const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 40));
               const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
