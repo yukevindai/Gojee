@@ -221,9 +221,10 @@ function generateSinglePlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Increased from 10 to 20 to allow more combinations for Date Night
-  const topDining = diningPlaces.slice(0, 20);
-  const topHangout = hangoutPlaces.slice(0, 20);
+  // Scale pool sizes based on number of plans requested (with 2x buffer for uniqueness constraints)
+  const poolSize = Math.min(numberOfPlans * 2, 40);
+  const topDining = diningPlaces.slice(0, poolSize);
+  const topHangout = hangoutPlaces.slice(0, poolSize);
 
   let planIndex = 0;
   for (const dining of topDining) {
@@ -365,9 +366,11 @@ function generateMorningPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  const topBreakfast = breakfastPlaces.slice(0, 8);
-  const topLunch = lunchPlaces.slice(0, 8);
-  const topHangout = hangoutPlaces.slice(0, 8);
+  // Scale pool sizes based on number of plans requested (with 1.5x buffer for uniqueness constraints)
+  const poolSize = Math.min(Math.ceil(numberOfPlans * 1.5), 30);
+  const topBreakfast = breakfastPlaces.slice(0, poolSize);
+  const topLunch = lunchPlaces.slice(0, poolSize);
+  const topHangout = hangoutPlaces.slice(0, poolSize);
 
   let planIndex = 0;
   for (const breakfast of topBreakfast) {
@@ -488,9 +491,12 @@ function generateAfternoonPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  const topLunch = lunchPlaces.slice(0, 8);
-  const topDinner = dinnerPlaces.slice(0, 8);
-  const topHangout = hangoutPlaces.slice(0, 12);
+  // Scale pool sizes based on number of plans requested (with 1.5x buffer for uniqueness constraints)
+  const poolSize = Math.min(Math.ceil(numberOfPlans * 1.5), 30);
+  const hangoutPoolSize = Math.min(Math.ceil(numberOfPlans * 2.5), 40); // Need more hangouts (2 per plan)
+  const topLunch = lunchPlaces.slice(0, poolSize);
+  const topDinner = dinnerPlaces.slice(0, poolSize);
+  const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
 
   let planIndex = 0;
   for (const lunch of topLunch) {
@@ -618,11 +624,13 @@ function generateFullDayPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Increased pool sizes for more combinations
-  const topBreakfast = breakfastPlaces.slice(0, 12);
-  const topLunch = lunchPlaces.slice(0, 12);
-  const topDinner = dinnerPlaces.slice(0, 12);
-  const topHangout = hangoutPlaces.slice(0, 30); // Increased significantly
+  // Scale pool sizes based on number of plans requested (with buffer for uniqueness constraints)
+  const poolSize = Math.min(Math.ceil(numberOfPlans * 1.5), 30);
+  const hangoutPoolSize = Math.min(Math.ceil(numberOfPlans * 3.5), 50); // Need more hangouts (3 per plan)
+  const topBreakfast = breakfastPlaces.slice(0, poolSize);
+  const topLunch = lunchPlaces.slice(0, poolSize);
+  const topDinner = dinnerPlaces.slice(0, poolSize);
+  const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
 
   let planIndex = 0;
 
