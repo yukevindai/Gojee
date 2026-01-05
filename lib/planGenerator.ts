@@ -312,8 +312,8 @@ function generateSinglePlans(params: {
 
   // Try to select plans with unique dining AND hangout venues first
   let finalPlans: Plan[] = [];
-  let usedDiningIds = new Set<string>();
-  let usedHangoutIds = new Set<string>();
+  let usedDiningIds = new Set<string>(); // Single set for all dining venues across all plans
+  let usedHangoutIds = new Set<string>(); // Single set for all activity venues across all plans
 
   for (const plan of candidatePlans) {
     if (finalPlans.length >= numberOfPlans) break;
@@ -321,7 +321,7 @@ function generateSinglePlans(params: {
     const diningId = plan.steps[0].place.id;
     const hangoutId = plan.steps[1].place.id;
 
-    // Skip if this dining or hangout venue is already used
+    // Skip if this dining or hangout venue is already used in ANY plan
     if (usedDiningIds.has(diningId) || usedHangoutIds.has(hangoutId)) {
       continue;
     }
@@ -431,8 +431,7 @@ function generateMorningPlans(params: {
 
   // Try to select plans with unique dining AND hangout venues first
   let finalPlans: Plan[] = [];
-  let usedBreakfastIds = new Set<string>();
-  let usedLunchIds = new Set<string>();
+  let usedDiningIds = new Set<string>(); // Single set for all dining venues (breakfast + lunch)
   let usedHangoutIds = new Set<string>();
 
   for (const plan of candidatePlans) {
@@ -442,22 +441,21 @@ function generateMorningPlans(params: {
     const hangoutId = plan.steps[1].place.id;
     const lunchId = plan.steps[2].place.id;
 
-    // Skip if any venue is already used
-    if (usedBreakfastIds.has(breakfastId) || usedHangoutIds.has(hangoutId) || usedLunchIds.has(lunchId)) {
+    // Skip if any venue is already used in ANY plan
+    if (usedDiningIds.has(breakfastId) || usedDiningIds.has(lunchId) || usedHangoutIds.has(hangoutId)) {
       continue;
     }
 
     finalPlans.push(plan);
-    usedBreakfastIds.add(breakfastId);
+    usedDiningIds.add(breakfastId);
+    usedDiningIds.add(lunchId);
     usedHangoutIds.add(hangoutId);
-    usedLunchIds.add(lunchId);
   }
 
   // If we don't have enough plans with unique activities, fall back to only unique dining
   if (finalPlans.length < numberOfPlans) {
     finalPlans = [];
-    usedBreakfastIds = new Set<string>();
-    usedLunchIds = new Set<string>();
+    usedDiningIds = new Set<string>();
 
     for (const plan of candidatePlans) {
       if (finalPlans.length >= numberOfPlans) break;
@@ -465,13 +463,14 @@ function generateMorningPlans(params: {
       const breakfastId = plan.steps[0].place.id;
       const lunchId = plan.steps[2].place.id;
 
-      if (usedBreakfastIds.has(breakfastId) || usedLunchIds.has(lunchId)) {
+      // Both breakfast and lunch must not have been used in any previous plan
+      if (usedDiningIds.has(breakfastId) || usedDiningIds.has(lunchId)) {
         continue;
       }
 
       finalPlans.push(plan);
-      usedBreakfastIds.add(breakfastId);
-      usedLunchIds.add(lunchId);
+      usedDiningIds.add(breakfastId);
+      usedDiningIds.add(lunchId);
     }
   }
 
@@ -560,8 +559,7 @@ function generateAfternoonPlans(params: {
 
   // Try to select plans with unique dining AND hangout venues first
   let finalPlans: Plan[] = [];
-  let usedLunchIds = new Set<string>();
-  let usedDinnerIds = new Set<string>();
+  let usedDiningIds = new Set<string>(); // Single set for all dining venues (lunch + dinner)
   let usedHangoutIds = new Set<string>();
 
   for (const plan of candidatePlans) {
@@ -572,24 +570,23 @@ function generateAfternoonPlans(params: {
     const hangout2Id = plan.steps[2].place.id;
     const dinnerId = plan.steps[3].place.id;
 
-    // Skip if any venue is already used
-    if (usedLunchIds.has(lunchId) || usedHangoutIds.has(hangout1Id) ||
-        usedHangoutIds.has(hangout2Id) || usedDinnerIds.has(dinnerId)) {
+    // Skip if any venue is already used in ANY plan
+    if (usedDiningIds.has(lunchId) || usedDiningIds.has(dinnerId) ||
+        usedHangoutIds.has(hangout1Id) || usedHangoutIds.has(hangout2Id)) {
       continue;
     }
 
     finalPlans.push(plan);
-    usedLunchIds.add(lunchId);
+    usedDiningIds.add(lunchId);
+    usedDiningIds.add(dinnerId);
     usedHangoutIds.add(hangout1Id);
     usedHangoutIds.add(hangout2Id);
-    usedDinnerIds.add(dinnerId);
   }
 
   // If we don't have enough plans with unique activities, fall back to only unique dining
   if (finalPlans.length < numberOfPlans) {
     finalPlans = [];
-    usedLunchIds = new Set<string>();
-    usedDinnerIds = new Set<string>();
+    usedDiningIds = new Set<string>();
 
     for (const plan of candidatePlans) {
       if (finalPlans.length >= numberOfPlans) break;
@@ -597,13 +594,14 @@ function generateAfternoonPlans(params: {
       const lunchId = plan.steps[0].place.id;
       const dinnerId = plan.steps[3].place.id;
 
-      if (usedLunchIds.has(lunchId) || usedDinnerIds.has(dinnerId)) {
+      // Both lunch and dinner must not have been used in any previous plan
+      if (usedDiningIds.has(lunchId) || usedDiningIds.has(dinnerId)) {
         continue;
       }
 
       finalPlans.push(plan);
-      usedLunchIds.add(lunchId);
-      usedDinnerIds.add(dinnerId);
+      usedDiningIds.add(lunchId);
+      usedDiningIds.add(dinnerId);
     }
   }
 
@@ -735,9 +733,7 @@ function generateFullDayPlans(params: {
 
   // Try to select plans with unique dining AND hangout venues first
   let finalPlans: Plan[] = [];
-  let usedBreakfastIds = new Set<string>();
-  let usedLunchIds = new Set<string>();
-  let usedDinnerIds = new Set<string>();
+  let usedDiningIds = new Set<string>(); // Single set for all dining venues (breakfast + lunch + dinner)
   let usedHangoutIds = new Set<string>();
 
   for (const plan of candidatePlans) {
@@ -750,16 +746,16 @@ function generateFullDayPlans(params: {
     const hangout3Id = plan.steps[4].place.id;
     const dinnerId = plan.steps[5].place.id;
 
-    // Skip if any venue is already used
-    if (usedBreakfastIds.has(breakfastId) || usedLunchIds.has(lunchId) || usedDinnerIds.has(dinnerId) ||
+    // Skip if any venue is already used in ANY plan
+    if (usedDiningIds.has(breakfastId) || usedDiningIds.has(lunchId) || usedDiningIds.has(dinnerId) ||
         usedHangoutIds.has(hangout1Id) || usedHangoutIds.has(hangout2Id) || usedHangoutIds.has(hangout3Id)) {
       continue;
     }
 
     finalPlans.push(plan);
-    usedBreakfastIds.add(breakfastId);
-    usedLunchIds.add(lunchId);
-    usedDinnerIds.add(dinnerId);
+    usedDiningIds.add(breakfastId);
+    usedDiningIds.add(lunchId);
+    usedDiningIds.add(dinnerId);
     usedHangoutIds.add(hangout1Id);
     usedHangoutIds.add(hangout2Id);
     usedHangoutIds.add(hangout3Id);
@@ -768,9 +764,7 @@ function generateFullDayPlans(params: {
   // If we don't have enough plans with unique activities, fall back to only unique dining
   if (finalPlans.length < numberOfPlans) {
     finalPlans = [];
-    usedBreakfastIds = new Set<string>();
-    usedLunchIds = new Set<string>();
-    usedDinnerIds = new Set<string>();
+    usedDiningIds = new Set<string>();
 
     for (const plan of candidatePlans) {
       if (finalPlans.length >= numberOfPlans) break;
@@ -779,14 +773,15 @@ function generateFullDayPlans(params: {
       const lunchId = plan.steps[2].place.id;
       const dinnerId = plan.steps[5].place.id;
 
-      if (usedBreakfastIds.has(breakfastId) || usedLunchIds.has(lunchId) || usedDinnerIds.has(dinnerId)) {
+      // All three dining venues must not have been used in any previous plan
+      if (usedDiningIds.has(breakfastId) || usedDiningIds.has(lunchId) || usedDiningIds.has(dinnerId)) {
         continue;
       }
 
       finalPlans.push(plan);
-      usedBreakfastIds.add(breakfastId);
-      usedLunchIds.add(lunchId);
-      usedDinnerIds.add(dinnerId);
+      usedDiningIds.add(breakfastId);
+      usedDiningIds.add(lunchId);
+      usedDiningIds.add(dinnerId);
     }
   }
 
