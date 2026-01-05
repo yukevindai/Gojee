@@ -197,10 +197,11 @@ export function usePlanSearch() {
 
     if (includeActivities) {
       // Use keyword-only search (no type restriction) for maximum flexibility
+      // Expanded keyword list for more variety
       const hangoutRequest: google.maps.places.PlaceSearchRequest = {
         location: new google.maps.LatLng(location.lat, location.lng),
-        radius: 3000, // Use larger radius for activities (3km)
-        keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery landmark monument historical tourist pier waterfront',
+        radius: 5000, // Increased radius for more activity variety (5km)
+        keyword: 'museum park beach theater arcade bowling gym spa fitness entertainment activity attraction aquarium zoo gallery landmark monument historical tourist pier waterfront bridge viewpoint scenic national park nature reserve shopping mall store boutique market stadium casino library performing arts cultural center science center botanical garden',
       };
 
       hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
@@ -213,7 +214,9 @@ export function usePlanSearch() {
               'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
               'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
               'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
-              'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier'
+              'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier',
+              'store', 'shopping_center', 'department_store', 'clothing_store',
+              'campground', 'rv_park', 'national_park', 'locality'
             ];
 
             const filteredResults = results.filter((result) => {
@@ -228,8 +231,8 @@ export function usePlanSearch() {
               return hasValidActivity || types.includes('point_of_interest');
             });
 
-            // Map results and filter by price
-            const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
+            // Significantly increased from 20 to 80 to get more activity variety
+            const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 80));
             const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
             resolve(priceFilteredPlaces);
           } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
