@@ -645,6 +645,10 @@ function generateFullDayPlans(params: {
         // Need at least 3 hangout locations
         if (topHangout.length < 3) break;
 
+        // Limit hangout combinations per dining combo to ensure we explore all dining venues
+        let hangoutCombosForThisDining = 0;
+        const maxHangoutCombosPerDining = 3; // Only try 3 hangout combos per dining combo
+
         // Try different combinations of 3 hangout locations
         for (let i = 0; i < topHangout.length - 2; i++) {
           for (let j = i + 1; j < topHangout.length - 1; j++) {
@@ -652,6 +656,11 @@ function generateFullDayPlans(params: {
               // Early exit if we have enough candidates
               if (candidatePlans.length >= maxCandidates) {
                 break outerLoop;
+              }
+
+              // Limit hangout combinations for this dining combo
+              if (hangoutCombosForThisDining >= maxHangoutCombosPerDining) {
+                break; // Move to next dinner
               }
 
               const hangout1 = topHangout[i];
@@ -709,6 +718,7 @@ function generateFullDayPlans(params: {
 
               candidatePlans.push(plan);
               planIndex++;
+              hangoutCombosForThisDining++;
             }
           }
         }
