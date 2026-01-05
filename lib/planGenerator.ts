@@ -625,16 +625,16 @@ function generateFullDayPlans(params: {
   const usedSideQuestIds = new Set<string>();
 
   // Scale pool sizes based on number of plans requested
-  // For Full Day, use smaller pools to prevent performance issues from nested loops
-  const diningPoolSize = Math.min(numberOfPlans * 2, 10); // Reduced from 50 to prevent freezing
-  const hangoutPoolSize = Math.min(numberOfPlans * 5, 25); // Reduced from 100 to prevent freezing
+  // For Full Day, use moderate pools with early exit to balance variety and performance
+  const diningPoolSize = Math.min(numberOfPlans * 3, 20); // Increased to allow more variety
+  const hangoutPoolSize = Math.min(numberOfPlans * 8, 50); // Increased to allow more variety
   const topBreakfast = breakfastPlaces.slice(0, diningPoolSize);
   const topLunch = lunchPlaces.slice(0, diningPoolSize);
   const topDinner = dinnerPlaces.slice(0, diningPoolSize);
   const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
 
   let planIndex = 0;
-  const maxCandidates = numberOfPlans * 50; // Limit to 50x the requested plans to prevent browser freeze
+  const maxCandidates = numberOfPlans * 100; // Limit to 100x the requested plans to prevent browser freeze
 
   // Iterate through different combinations of breakfast, lunch, dinner, and 3 hangouts
   outerLoop: for (const breakfast of topBreakfast) {
