@@ -636,9 +636,9 @@ function generateFullDayPlans(params: {
   const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
 
   let planIndex = 0;
-  // Balance exploring dining variety with massive activity diversity
-  // For 5 plans: 30×30×30 = 27,000 dining combos. With 100 hangout combos each = lots of diversity
-  const maxCandidates = 200000; // High limit to allow diverse activity exploration
+  // Balance exploring dining variety with activity diversity
+  // For 5 plans: 30×30×30 = 27,000 dining combos. With 15 hangout combos each = good diversity without freezing
+  const maxCandidates = 75000; // Balanced limit for performance and diversity
 
   // Iterate through different combinations of breakfast, lunch, dinner, and 3 hangouts
   outerLoop: for (const breakfast of topBreakfast) {
@@ -647,9 +647,9 @@ function generateFullDayPlans(params: {
         // Need at least 3 hangout locations
         if (topHangout.length < 3) break;
 
-        // Explore many activity combinations per dining combo to ensure activity diversity
+        // Explore moderate number of activity combinations per dining combo for diversity
         let hangoutCombosForThisDining = 0;
-        const maxHangoutCombosPerDining = 100; // Explore 100 different activity combos per dining combo
+        const maxHangoutCombosPerDining = 15; // Balanced exploration for unique activities
 
         // Try different combinations of 3 hangout locations
         hangoutLoop: for (let i = 0; i < topHangout.length - 2; i++) {
