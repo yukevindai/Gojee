@@ -624,18 +624,20 @@ function generateFullDayPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Scale pool sizes based on number of plans requested (with larger buffer to account for filtering)
-  const poolSize = Math.min(numberOfPlans * 3, 50);
-  const hangoutPoolSize = Math.min(numberOfPlans * 7, 100); // Need more hangouts (3 per plan) plus buffer
-  const topBreakfast = breakfastPlaces.slice(0, poolSize);
-  const topLunch = lunchPlaces.slice(0, poolSize);
-  const topDinner = dinnerPlaces.slice(0, poolSize);
+  // Scale pool sizes based on number of plans requested
+  // For Full Day, use smaller pools to prevent performance issues from nested loops
+  const diningPoolSize = Math.min(numberOfPlans * 2, 10); // Reduced from 50 to prevent freezing
+  const hangoutPoolSize = Math.min(numberOfPlans * 5, 25); // Reduced from 100 to prevent freezing
+  const topBreakfast = breakfastPlaces.slice(0, diningPoolSize);
+  const topLunch = lunchPlaces.slice(0, diningPoolSize);
+  const topDinner = dinnerPlaces.slice(0, diningPoolSize);
   const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
 
   let planIndex = 0;
+  const maxCandidates = numberOfPlans * 50; // Limit to 50x the requested plans to prevent browser freeze
 
   // Iterate through different combinations of breakfast, lunch, dinner, and 3 hangouts
-  for (const breakfast of topBreakfast) {
+  outerLoop: for (const breakfast of topBreakfast) {
     for (const lunch of topLunch) {
       for (const dinner of topDinner) {
         // Need at least 3 hangout locations
@@ -645,6 +647,11 @@ function generateFullDayPlans(params: {
         for (let i = 0; i < topHangout.length - 2; i++) {
           for (let j = i + 1; j < topHangout.length - 1; j++) {
             for (let k = j + 1; k < topHangout.length; k++) {
+              // Early exit if we have enough candidates
+              if (candidatePlans.length >= maxCandidates) {
+                break outerLoop;
+              }
+
               const hangout1 = topHangout[i];
               const hangout2 = topHangout[j];
               const hangout3 = topHangout[k];
