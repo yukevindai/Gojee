@@ -208,6 +208,12 @@ export function usePlanSearch() {
         { keyword: 'stadium arena sports venue casino', type: null },
         { keyword: 'zoo aquarium amusement park', type: null },
         { keyword: 'library bookstore performing arts center', type: null },
+        { keyword: 'church cathedral temple mosque synagogue religious shrine', type: 'church' },
+        { keyword: 'historic landmark heritage site historical building', type: null },
+        { keyword: 'national park state park recreation area nature preserve', type: null },
+        { keyword: 'viewpoint observation deck scenic overlook vista point', type: null },
+        { keyword: 'aquarium marine center oceanarium sea life center', type: 'aquarium' },
+        { keyword: 'architectural landmark historic building monument', type: null },
       ];
 
       const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
@@ -218,7 +224,10 @@ export function usePlanSearch() {
         'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
         'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier',
         'store', 'shopping_center', 'department_store', 'clothing_store',
-        'campground', 'rv_park', 'national_park', 'locality'
+        'campground', 'rv_park', 'national_park', 'locality',
+        'church', 'mosque', 'synagogue', 'hindu_temple', 'place_of_worship',
+        'memorial', 'monument', 'cultural_center', 'heritage_site',
+        'observation_deck', 'scenic_viewpoint'
       ];
 
       // Perform all searches in parallel
