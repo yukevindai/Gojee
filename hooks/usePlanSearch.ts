@@ -41,23 +41,12 @@ export function usePlanSearch() {
     });
   };
 
-  // Helper function to filter dining places by minimum rating (4.0+)
-  const filterByRating = (places: Place[], minRating: number = 4.0): Place[] => {
-    // First, try to get places with 4.0+ rating
-    const highRatedPlaces = places.filter(place => {
-      if (!place.rating) return false;
-      return place.rating >= minRating;
-    });
-
-    // If we have enough high-rated places (at least 8), use them
-    if (highRatedPlaces.length >= 8) {
-      return highRatedPlaces;
-    }
-
-    // Otherwise, include places with 3.5+ rating to ensure we have enough options
+  // Helper function to filter dining places by minimum rating (3.5+)
+  const filterByRating = (places: Place[], minRating: number = 3.5): Place[] => {
     return places.filter(place => {
-      if (!place.rating) return true; // Include unrated places as fallback
-      return place.rating >= 3.5;
+      // Only include places with 3.5+ star ratings
+      if (!place.rating) return false; // Exclude places without ratings
+      return place.rating >= minRating;
     });
   };
 
@@ -123,7 +112,7 @@ export function usePlanSearch() {
               return types.some(type => validFoodTypes.includes(type));
             });
 
-            // Map results and filter by price and rating (4.0+)
+            // Map results and filter by price and rating (3.5+)
             // Increased from 20 to 40 to get more venues before filtering
             const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 40));
             const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
@@ -189,7 +178,7 @@ export function usePlanSearch() {
                 return types.some(type => validFoodTypes.includes(type));
               });
 
-              // Map results and filter by price and rating (4.0+)
+              // Map results and filter by price and rating (3.5+)
               // Increased from 20 to 40 to get more venues before filtering
               const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 40));
               const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
@@ -203,56 +192,76 @@ export function usePlanSearch() {
       }
     }
 
-    // Search for hangout places with broader keywords (only if includeActivities is true)
+    // Search for hangout places with multiple targeted searches (only if includeActivities is true)
     let hangoutPlaces: Place[] = [];
 
     if (includeActivities) {
-      // Use keyword-only search (no type restriction) for maximum flexibility
-      const hangoutRequest: google.maps.places.PlaceSearchRequest = {
-        location: new google.maps.LatLng(location.lat, location.lng),
-        radius: 3000, // Use larger radius for activities (3km)
-        keyword: 'museum park beach theater arcade bowling gym entertainment activity attraction aquarium zoo gallery landmark monument historical tourist pier waterfront',
-      };
+      // Make multiple targeted searches to get maximum diversity
+      const activitySearches = [
+        { keyword: 'museum art gallery cultural center science center', type: 'museum' },
+        { keyword: 'park national park botanical garden nature reserve', type: 'park' },
+        { keyword: 'beach waterfront pier ocean seaside', type: null },
+        { keyword: 'landmark monument historical site tourist attraction', type: 'tourist_attraction' },
+        { keyword: 'shopping mall store boutique market', type: 'shopping_mall' },
+        { keyword: 'gym fitness spa wellness yoga', type: 'gym' },
+        { keyword: 'theater cinema movie arcade bowling entertainment', type: 'movie_theater' },
+        { keyword: 'stadium arena sports venue casino', type: null },
+        { keyword: 'zoo aquarium amusement park', type: null },
+        { keyword: 'library bookstore performing arts center', type: null },
+      ];
 
-      hangoutPlaces = await new Promise<Place[]>((resolve, reject) => {
-        service.nearbySearch(hangoutRequest, (results, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-            // Filter out lodging/hotels - we only want actual activity locations
-            const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
-            const validActivityTypes = [
-              'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
-              'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
-              'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
-              'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
-              'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier'
-            ];
+      const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
+      const validActivityTypes = [
+        'park', 'movie_theater', 'amusement_park', 'museum', 'art_gallery',
+        'bowling_alley', 'gym', 'spa', 'shopping_mall', 'aquarium', 'zoo',
+        'tourist_attraction', 'point_of_interest', 'stadium', 'casino',
+        'night_club', 'bar', 'library', 'arcade', 'theater', 'performing_arts_theater',
+        'natural_feature', 'beach', 'landmark', 'historical_landmark', 'pier',
+        'store', 'shopping_center', 'department_store', 'clothing_store',
+        'campground', 'rv_park', 'national_park', 'locality'
+      ];
 
-            const filteredResults = results.filter((result) => {
-              const types = result.types || [];
+      // Perform all searches in parallel
+      const searchPromises = activitySearches.map(({ keyword, type }) => {
+        const request: google.maps.places.PlaceSearchRequest = {
+          location: new google.maps.LatLng(location.lat, location.lng),
+          radius: 5000, // 5km radius for activity variety
+          keyword,
+          ...(type && { type }), // Only add type if specified
+        };
 
-              // Exclude if any type is a lodging type
-              const hasLodging = types.some(type => excludedTypes.includes(type));
-              if (hasLodging) return false;
+        return new Promise<Place[]>((resolve) => {
+          service.nearbySearch(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+              const filteredResults = results.filter((result) => {
+                const types = result.types || [];
+                const hasLodging = types.some(type => excludedTypes.includes(type));
+                if (hasLodging) return false;
+                const hasValidActivity = types.some(type => validActivityTypes.includes(type));
+                return hasValidActivity || types.includes('point_of_interest');
+              });
 
-              // Include if it has valid activity types or if it's a general point_of_interest
-              const hasValidActivity = types.some(type => validActivityTypes.includes(type));
-              return hasValidActivity || types.includes('point_of_interest');
-            });
-
-            // Map results and filter by price
-            const mappedPlaces = mapPlaceResults(filteredResults.slice(0, 20));
-            const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
-            resolve(priceFilteredPlaces);
-          } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-            // If no results found, resolve with empty array instead of rejecting
-            // This allows the plan generation to continue without hangout places
-            console.warn('No hangout places found in area, continuing without activities');
-            resolve([]);
-          } else {
-            reject(new Error(`Hangout search failed: ${status}`));
-          }
+              const mappedPlaces = mapPlaceResults(filteredResults);
+              const priceFilteredPlaces = filterByPrice(mappedPlaces, priceRange);
+              resolve(priceFilteredPlaces);
+            } else {
+              resolve([]);
+            }
+          });
         });
       });
+
+      // Combine all search results
+      const allResults = await Promise.all(searchPromises);
+      const combinedPlaces = allResults.flat();
+
+      // Remove duplicates by ID
+      const uniquePlacesMap = new Map<string, Place>();
+      combinedPlaces.forEach(place => {
+        uniquePlacesMap.set(place.id, place);
+      });
+
+      hangoutPlaces = Array.from(uniquePlacesMap.values());
     }
 
     // Search for side quest locations (coffee, arcades, gyms, etc.) for all plans
