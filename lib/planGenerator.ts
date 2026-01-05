@@ -622,11 +622,15 @@ function generateFullDayPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // For Full Day plans, we need enough venue variety while preventing browser freeze
-  // Strategy: Use moderate pool sizes with high maxCandidates limit and early exit
-  // For 5 plans we need: 5 unique breakfast + 5 unique lunch + 5 unique dinner + 15 unique hangouts
-  const diningPoolSize = 8; // Fixed pool of 8 per meal type to limit nested loop iterations
-  const hangoutPoolSize = 25; // Fixed pool of 25 hangouts
+  // For Full Day plans, use twice as many venues as Afternoon plans
+  // Afternoon uses: poolSize = min(numberOfPlans * 3, 50), hangoutPoolSize = min(numberOfPlans * 5, 70)
+  // Full Day should consider twice as many venues with early exit to prevent browser freeze
+  const afternoonDiningPool = Math.min(numberOfPlans * 3, 50);
+  const afternoonHangoutPool = Math.min(numberOfPlans * 5, 70);
+
+  const diningPoolSize = Math.min(afternoonDiningPool * 2, 30); // Twice Afternoon dining, capped at 30
+  const hangoutPoolSize = Math.min(afternoonHangoutPool * 2, 80); // Twice Afternoon hangout, capped at 80
+
   const topBreakfast = breakfastPlaces.slice(0, diningPoolSize);
   const topLunch = lunchPlaces.slice(0, diningPoolSize);
   const topDinner = dinnerPlaces.slice(0, diningPoolSize);
@@ -634,7 +638,7 @@ function generateFullDayPlans(params: {
 
   let planIndex = 0;
   // Generate many candidates to ensure we have enough variety for the smart fallback system
-  const maxCandidates = 1000; // Fixed high limit with early exit to prevent freeze
+  const maxCandidates = 1500; // Increased from 1000 to accommodate larger pools
 
   // Iterate through different combinations of breakfast, lunch, dinner, and 3 hangouts
   outerLoop: for (const breakfast of topBreakfast) {
