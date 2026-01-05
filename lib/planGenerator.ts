@@ -221,8 +221,8 @@ function generateSinglePlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Scale pool sizes based on number of plans requested (with 2x buffer for uniqueness constraints)
-  const poolSize = Math.min(numberOfPlans * 2, 40);
+  // Scale pool sizes based on number of plans requested (with larger buffer to account for filtering)
+  const poolSize = Math.min(numberOfPlans * 4, 60);
   const topDining = diningPlaces.slice(0, poolSize);
   const topHangout = hangoutPlaces.slice(0, poolSize);
 
@@ -366,8 +366,8 @@ function generateMorningPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Scale pool sizes based on number of plans requested (with 1.5x buffer for uniqueness constraints)
-  const poolSize = Math.min(Math.ceil(numberOfPlans * 1.5), 30);
+  // Scale pool sizes based on number of plans requested (with larger buffer to account for filtering)
+  const poolSize = Math.min(numberOfPlans * 3, 50);
   const topBreakfast = breakfastPlaces.slice(0, poolSize);
   const topLunch = lunchPlaces.slice(0, poolSize);
   const topHangout = hangoutPlaces.slice(0, poolSize);
@@ -491,9 +491,9 @@ function generateAfternoonPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Scale pool sizes based on number of plans requested (with 1.5x buffer for uniqueness constraints)
-  const poolSize = Math.min(Math.ceil(numberOfPlans * 1.5), 30);
-  const hangoutPoolSize = Math.min(Math.ceil(numberOfPlans * 2.5), 40); // Need more hangouts (2 per plan)
+  // Scale pool sizes based on number of plans requested (with larger buffer to account for filtering)
+  const poolSize = Math.min(numberOfPlans * 3, 50);
+  const hangoutPoolSize = Math.min(numberOfPlans * 5, 70); // Need more hangouts (2 per plan) plus buffer
   const topLunch = lunchPlaces.slice(0, poolSize);
   const topDinner = dinnerPlaces.slice(0, poolSize);
   const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
@@ -624,9 +624,9 @@ function generateFullDayPlans(params: {
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
-  // Scale pool sizes based on number of plans requested (with buffer for uniqueness constraints)
-  const poolSize = Math.min(Math.ceil(numberOfPlans * 1.5), 30);
-  const hangoutPoolSize = Math.min(Math.ceil(numberOfPlans * 3.5), 50); // Need more hangouts (3 per plan)
+  // Scale pool sizes based on number of plans requested (with larger buffer to account for filtering)
+  const poolSize = Math.min(numberOfPlans * 3, 50);
+  const hangoutPoolSize = Math.min(numberOfPlans * 7, 100); // Need more hangouts (3 per plan) plus buffer
   const topBreakfast = breakfastPlaces.slice(0, poolSize);
   const topLunch = lunchPlaces.slice(0, poolSize);
   const topDinner = dinnerPlaces.slice(0, poolSize);
