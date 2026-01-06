@@ -637,8 +637,26 @@ function generateFullDayPlans(params: {
 
   let planIndex = 0;
   // Balance exploring dining variety with activity diversity
-  // For 5 plans: 30×30×30 = 27,000 dining combos. With 15 hangout combos each = good diversity without freezing
+  // For 5 plans: 30×30×30 = 27,000 dining combos. With random sampling = massive diversity
   const maxCandidates = 75000; // Balanced limit for performance and diversity
+
+  // Helper function to generate random combinations of 3 unique indices
+  const getRandomCombination = (maxIndex: number, used: Set<string>): [number, number, number] | null => {
+    const maxAttempts = 50;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const indices = new Set<number>();
+      while (indices.size < 3) {
+        indices.add(Math.floor(Math.random() * maxIndex));
+      }
+      const sorted = Array.from(indices).sort((a, b) => a - b);
+      const key = sorted.join(',');
+      if (!used.has(key)) {
+        used.add(key);
+        return [sorted[0], sorted[1], sorted[2]];
+      }
+    }
+    return null;
+  };
 
   // Iterate through different combinations of breakfast, lunch, dinner, and 3 hangouts
   outerLoop: for (const breakfast of topBreakfast) {
@@ -647,82 +665,76 @@ function generateFullDayPlans(params: {
         // Need at least 3 hangout locations
         if (topHangout.length < 3) break;
 
-        // Explore moderate number of activity combinations per dining combo for diversity
-        let hangoutCombosForThisDining = 0;
-        const maxHangoutCombosPerDining = 15; // Balanced exploration for unique activities
+        // For each dining combo, generate random activity combinations for massive diversity
+        const usedHangoutCombos = new Set<string>();
+        const maxHangoutCombosPerDining = 15; // Random combinations per dining combo
 
-        // Try different combinations of 3 hangout locations
-        hangoutLoop: for (let i = 0; i < topHangout.length - 2; i++) {
-          for (let j = i + 1; j < topHangout.length - 1; j++) {
-            for (let k = j + 1; k < topHangout.length; k++) {
-              // Early exit if we have enough candidates
-              if (candidatePlans.length >= maxCandidates) {
-                break outerLoop;
-              }
-
-              // Limit hangout combinations for this dining combo
-              if (hangoutCombosForThisDining >= maxHangoutCombosPerDining) {
-                break hangoutLoop; // Break out of all 3 hangout loops to move to next dinner
-              }
-
-              const hangout1 = topHangout[i];
-              const hangout2 = topHangout[j];
-              const hangout3 = topHangout[k];
-
-              const allIds = [breakfast.id, hangout1.id, lunch.id, hangout2.id, hangout3.id, dinner.id];
-
-              // Check for duplicates within this plan (e.g., same restaurant for multiple meals)
-              const uniqueIds = new Set(allIds);
-              if (uniqueIds.size !== allIds.length) continue;
-
-              // Calculate total distance
-              const dist1 = calculateDistance(breakfast, hangout1);
-              const dist2 = calculateDistance(hangout1, lunch);
-              const dist3 = calculateDistance(lunch, hangout2);
-              const dist4 = calculateDistance(hangout2, hangout3);
-              const dist5 = calculateDistance(hangout3, dinner);
-              const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
-
-              // Relaxed from 20km to 25km to allow more plan combinations
-              if (totalDistance > 25000) continue;
-
-              const steps: ActivityStep[] = [
-                { type: 'dining', place: breakfast, duration: 45 },
-                { type: 'hangout', place: hangout1, duration: 60 },
-                { type: 'dining', place: lunch, duration: 60 },
-                { type: 'hangout', place: hangout2, duration: 75 },
-                { type: 'hangout', place: hangout3, duration: 75 },
-                { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
-              ];
-
-              // Find side quests (1-2 per plan)
-              const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedSideQuestIds, 2);
-
-              // Don't require minimum side quests to ensure enough plans can be created
-
-              const avgCost = Math.round(
-                ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6
-              );
-              const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 100 + (sideQuests.length * 25);
-
-              const plan: Plan = {
-                id: `fullday-${planIndex}`,
-                name: `Full Day: ${breakfast.name.split(' ')[0]} to ${dinner.name.split(' ')[0]}`,
-                description: `Complete day from breakfast at ${breakfast.name} to dinner at ${dinner.name} with multiple activities.`,
-                steps,
-                totalDuration,
-                estimatedCost: avgCost,
-                vibe: getVibeFromHangout(hangout1.types?.[0] || 'park', hangoutType),
-                distance: totalDistance,
-                distanceCategory: categorizeDistance(totalDistance / 5),
-                sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
-              };
-
-              candidatePlans.push(plan);
-              planIndex++;
-              hangoutCombosForThisDining++;
-            }
+        for (let comboIndex = 0; comboIndex < maxHangoutCombosPerDining; comboIndex++) {
+          // Early exit if we have enough candidates
+          if (candidatePlans.length >= maxCandidates) {
+            break outerLoop;
           }
+
+          // Get a random combination of 3 activity indices
+          const combination = getRandomCombination(topHangout.length, usedHangoutCombos);
+          if (!combination) break; // Can't find more unique combinations
+
+          const [i, j, k] = combination;
+          const hangout1 = topHangout[i];
+          const hangout2 = topHangout[j];
+          const hangout3 = topHangout[k];
+
+          const allIds = [breakfast.id, hangout1.id, lunch.id, hangout2.id, hangout3.id, dinner.id];
+
+          // Check for duplicates within this plan (e.g., same restaurant for multiple meals)
+          const uniqueIds = new Set(allIds);
+          if (uniqueIds.size !== allIds.length) continue;
+
+          // Calculate total distance
+          const dist1 = calculateDistance(breakfast, hangout1);
+          const dist2 = calculateDistance(hangout1, lunch);
+          const dist3 = calculateDistance(lunch, hangout2);
+          const dist4 = calculateDistance(hangout2, hangout3);
+          const dist5 = calculateDistance(hangout3, dinner);
+          const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
+
+          // Relaxed from 20km to 25km to allow more plan combinations
+          if (totalDistance > 25000) continue;
+
+          const steps: ActivityStep[] = [
+            { type: 'dining', place: breakfast, duration: 45 },
+            { type: 'hangout', place: hangout1, duration: 60 },
+            { type: 'dining', place: lunch, duration: 60 },
+            { type: 'hangout', place: hangout2, duration: 75 },
+            { type: 'hangout', place: hangout3, duration: 75 },
+            { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
+          ];
+
+          // Find side quests (1-2 per plan)
+          const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedSideQuestIds, 2);
+
+          // Don't require minimum side quests to ensure enough plans can be created
+
+          const avgCost = Math.round(
+            ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6
+          );
+          const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 100 + (sideQuests.length * 25);
+
+          const plan: Plan = {
+            id: `fullday-${planIndex}`,
+            name: `Full Day: ${breakfast.name.split(' ')[0]} to ${dinner.name.split(' ')[0]}`,
+            description: `Complete day from breakfast at ${breakfast.name} to dinner at ${dinner.name} with multiple activities.`,
+            steps,
+            totalDuration,
+            estimatedCost: avgCost,
+            vibe: getVibeFromHangout(hangout1.types?.[0] || 'park', hangoutType),
+            distance: totalDistance,
+            distanceCategory: categorizeDistance(totalDistance / 5),
+            sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
+          };
+
+          candidatePlans.push(plan);
+          planIndex++;
         }
       }
     }
