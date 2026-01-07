@@ -1,4 +1,6 @@
 import type { Place } from './places';
+import type { WeatherPreferences } from './weather';
+import { getWinterSideQuests } from './weather';
 
 export interface ActivityStep {
   type: 'dining' | 'hangout';
@@ -31,6 +33,7 @@ export interface GeneratePlansOptions {
   numberOfPlans?: number; // Number of plans to generate (default 5)
   startTime?: string; // Optional start time (e.g., "9 AM")
   endTime?: string; // Optional end time (e.g., "5 PM")
+  weather?: WeatherPreferences; // Weather-based preferences for distance and activity adjustments
 }
 
 function calculateDistance(place1: Place, place2: Place): number {
@@ -169,7 +172,7 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 }
 
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
-  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5, startTime, endTime } = options;
+  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5, startTime, endTime, weather } = options;
 
   // For backward compatibility, if old parameters are passed
   const diningPlaces = (options as any).diningPlaces || [];
@@ -179,24 +182,24 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
 
   // If using old interface (single dining type)
   if (diningPlaces.length > 0 && planType === 'single') {
-    plans = generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans });
+    plans = generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans, weather });
   } else {
     // Generate plans based on plan type
     switch (planType) {
       case 'morning':
-        plans = generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        plans = generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
         break;
       case 'afternoon':
-        plans = generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        plans = generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
         break;
       case 'fullday':
-        plans = generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        plans = generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
         break;
       case 'single':
       default:
         // Use first available dining category
         const singleDining = dinnerPlaces.length > 0 ? dinnerPlaces : (lunchPlaces.length > 0 ? lunchPlaces : breakfastPlaces);
-        plans = generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans });
+        plans = generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
         break;
     }
   }
@@ -216,8 +219,9 @@ function generateSinglePlans(params: {
   partySize: string;
   sideQuestPlaces: Place[];
   numberOfPlans: number;
+  weather?: WeatherPreferences;
 }): Plan[] {
-  const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
+  const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -227,11 +231,13 @@ function generateSinglePlans(params: {
   const topHangout = hangoutPlaces.slice(0, poolSize);
 
   let planIndex = 0;
+  // Adjust max distance based on weather - reduce in hot/extreme weather
+  const maxDistance = weather?.reduceDistance ? 5000 : 8000; // 5km in hot weather, 8km otherwise
+
   for (const dining of topDining) {
     for (const hangout of topHangout) {
       const distance = calculateDistance(dining, hangout);
-      // Keep main locations closer together (max 8km - relaxed from 5km)
-      if (distance > 8000) continue;
+      if (distance > maxDistance) continue;
 
       const distanceCategory = categorizeDistance(distance);
       const diningDuration = getDiningDuration(partySize);
@@ -329,12 +335,37 @@ function generateSinglePlans(params: {
   for (const planIndex of shuffledIndices) {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
-    const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
 
-    if (sideQuests.length > 0) {
-      plan.sideQuests = sideQuests;
-      // Update total duration to include the side quest
-      plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+    // In winter, randomly add winter-specific side quests (like building a snowman)
+    if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
+      const winterQuests = getWinterSideQuests();
+      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+
+      // Create a virtual "place" for the winter side quest
+      const winterQuestPlace: Place = {
+        id: `winter-quest-${randomWinterQuest.name.replace(/\s+/g, '-').toLowerCase()}`,
+        name: randomWinterQuest.name,
+        address: randomWinterQuest.description,
+        rating: 5,
+        location: mainPlaces[0].location, // Use same location as first venue
+        types: ['point_of_interest'],
+      };
+
+      plan.sideQuests = [{
+        type: 'hangout',
+        place: winterQuestPlace,
+        duration: randomWinterQuest.duration,
+      }];
+      plan.totalDuration = plan.totalDuration + randomWinterQuest.duration;
+    } else {
+      // Normal side quest from venues
+      const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
+
+      if (sideQuests.length > 0) {
+        plan.sideQuests = sideQuests;
+        // Update total duration to include the side quest
+        plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+      }
     }
   }
 
@@ -349,8 +380,9 @@ function generateMorningPlans(params: {
   partySize: string;
   sideQuestPlaces: Place[];
   numberOfPlans: number;
+  weather?: WeatherPreferences;
 }): Plan[] {
-  const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
+  const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -359,6 +391,9 @@ function generateMorningPlans(params: {
   const topBreakfast = breakfastPlaces.slice(0, poolSize);
   const topLunch = lunchPlaces.slice(0, poolSize);
   const topHangout = hangoutPlaces.slice(0, poolSize);
+
+  // Adjust max distance based on weather - reduce in hot/extreme weather
+  const maxTotalDistance = weather?.reduceDistance ? 10000 : 15000; // 10km in hot weather, 15km otherwise
 
   let planIndex = 0;
   for (const breakfast of topBreakfast) {
@@ -374,8 +409,7 @@ function generateMorningPlans(params: {
         const dist1 = calculateDistance(breakfast, hangout);
         const dist2 = calculateDistance(hangout, lunch);
         const totalDistance = dist1 + dist2;
-        // Relaxed from 10km to 15km to allow more plan combinations
-        if (totalDistance > 15000) continue;
+        if (totalDistance > maxTotalDistance) continue;
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: breakfast, duration: 45 },
@@ -472,12 +506,37 @@ function generateMorningPlans(params: {
   for (const planIndex of shuffledIndices) {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
-    const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
 
-    if (sideQuests.length > 0) {
-      plan.sideQuests = sideQuests;
-      // Update total duration to include the side quest
-      plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+    // In winter, randomly add winter-specific side quests (like building a snowman)
+    if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
+      const winterQuests = getWinterSideQuests();
+      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+
+      // Create a virtual "place" for the winter side quest
+      const winterQuestPlace: Place = {
+        id: `winter-quest-${randomWinterQuest.name.replace(/\s+/g, '-').toLowerCase()}`,
+        name: randomWinterQuest.name,
+        address: randomWinterQuest.description,
+        rating: 5,
+        location: mainPlaces[0].location, // Use same location as first venue
+        types: ['point_of_interest'],
+      };
+
+      plan.sideQuests = [{
+        type: 'hangout',
+        place: winterQuestPlace,
+        duration: randomWinterQuest.duration,
+      }];
+      plan.totalDuration = plan.totalDuration + randomWinterQuest.duration;
+    } else {
+      // Normal side quest from venues
+      const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
+
+      if (sideQuests.length > 0) {
+        plan.sideQuests = sideQuests;
+        // Update total duration to include the side quest
+        plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+      }
     }
   }
 
@@ -492,8 +551,9 @@ function generateAfternoonPlans(params: {
   partySize: string;
   sideQuestPlaces: Place[];
   numberOfPlans: number;
+  weather?: WeatherPreferences;
 }): Plan[] {
-  const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
+  const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -503,6 +563,9 @@ function generateAfternoonPlans(params: {
   const topLunch = lunchPlaces.slice(0, poolSize);
   const topDinner = dinnerPlaces.slice(0, poolSize);
   const topHangout = hangoutPlaces.slice(0, hangoutPoolSize);
+
+  // Adjust max distance based on weather - reduce in hot/extreme weather
+  const maxTotalDistance = weather?.reduceDistance ? 12000 : 18000; // 12km in hot weather, 18km otherwise
 
   let planIndex = 0;
   for (const lunch of topLunch) {
@@ -520,8 +583,7 @@ function generateAfternoonPlans(params: {
         const dist2 = calculateDistance(hangout1, hangout2);
         const dist3 = calculateDistance(hangout2, dinner);
         const totalDistance = dist1 + dist2 + dist3;
-        // Relaxed from 12km to 18km to allow more plan combinations
-        if (totalDistance > 18000) continue;
+        if (totalDistance > maxTotalDistance) continue;
 
         const steps: ActivityStep[] = [
           { type: 'dining', place: lunch, duration: 60 },
@@ -622,12 +684,37 @@ function generateAfternoonPlans(params: {
   for (const planIndex of shuffledIndices) {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
-    const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
 
-    if (sideQuests.length > 0) {
-      plan.sideQuests = sideQuests;
-      // Update total duration to include the side quest
-      plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+    // In winter, randomly add winter-specific side quests (like building a snowman)
+    if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
+      const winterQuests = getWinterSideQuests();
+      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+
+      // Create a virtual "place" for the winter side quest
+      const winterQuestPlace: Place = {
+        id: `winter-quest-${randomWinterQuest.name.replace(/\s+/g, '-').toLowerCase()}`,
+        name: randomWinterQuest.name,
+        address: randomWinterQuest.description,
+        rating: 5,
+        location: mainPlaces[0].location, // Use same location as first venue
+        types: ['point_of_interest'],
+      };
+
+      plan.sideQuests = [{
+        type: 'hangout',
+        place: winterQuestPlace,
+        duration: randomWinterQuest.duration,
+      }];
+      plan.totalDuration = plan.totalDuration + randomWinterQuest.duration;
+    } else {
+      // Normal side quest from venues
+      const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
+
+      if (sideQuests.length > 0) {
+        plan.sideQuests = sideQuests;
+        // Update total duration to include the side quest
+        plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+      }
     }
   }
 
@@ -643,8 +730,9 @@ function generateFullDayPlans(params: {
   partySize: string;
   sideQuestPlaces: Place[];
   numberOfPlans: number;
+  weather?: WeatherPreferences;
 }): Plan[] {
-  const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans } = params;
+  const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -665,6 +753,9 @@ function generateFullDayPlans(params: {
   // Balance exploring dining variety with activity diversity
   // For 5 plans: 30×30×30 = 27,000 dining combos. With random sampling = massive diversity
   const maxCandidates = 75000; // Balanced limit for performance and diversity
+
+  // Adjust max distance based on weather - reduce in hot/extreme weather
+  const maxTotalDistance = weather?.reduceDistance ? 18000 : 25000; // 18km in hot weather, 25km otherwise
 
   // Helper function to generate random combinations of 3 unique indices
   const getRandomCombination = (maxIndex: number, used: Set<string>): [number, number, number] | null => {
@@ -724,8 +815,7 @@ function generateFullDayPlans(params: {
           const dist5 = calculateDistance(hangout3, dinner);
           const totalDistance = dist1 + dist2 + dist3 + dist4 + dist5;
 
-          // Relaxed from 20km to 25km to allow more plan combinations
-          if (totalDistance > 25000) continue;
+          if (totalDistance > maxTotalDistance) continue;
 
           const steps: ActivityStep[] = [
             { type: 'dining', place: breakfast, duration: 45 },
@@ -837,12 +927,37 @@ function generateFullDayPlans(params: {
   for (const planIndex of shuffledIndices) {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
-    const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
 
-    if (sideQuests.length > 0) {
-      plan.sideQuests = sideQuests;
-      // Update total duration to include the side quest
-      plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+    // In winter, randomly add winter-specific side quests (like building a snowman)
+    if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
+      const winterQuests = getWinterSideQuests();
+      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+
+      // Create a virtual "place" for the winter side quest
+      const winterQuestPlace: Place = {
+        id: `winter-quest-${randomWinterQuest.name.replace(/\s+/g, '-').toLowerCase()}`,
+        name: randomWinterQuest.name,
+        address: randomWinterQuest.description,
+        rating: 5,
+        location: mainPlaces[0].location, // Use same location as first venue
+        types: ['point_of_interest'],
+      };
+
+      plan.sideQuests = [{
+        type: 'hangout',
+        place: winterQuestPlace,
+        duration: randomWinterQuest.duration,
+      }];
+      plan.totalDuration = plan.totalDuration + randomWinterQuest.duration;
+    } else {
+      // Normal side quest from venues
+      const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
+
+      if (sideQuests.length > 0) {
+        plan.sideQuests = sideQuests;
+        // Update total duration to include the side quest
+        plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
+      }
     }
   }
 
