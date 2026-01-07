@@ -796,9 +796,9 @@ function generateFullDayPlans(params: {
   }
 
   // Add side quests to only a subset of plans
-  // When less than 5 plans: 1-2 plans get 1 side quest each
-  // When 5+ plans: 2-3 plans get 1 side quest each
-  const numPlansWithSideQuests = finalPlans.length < 5
+  // When <= 5 plans: 1-2 plans get 1 side quest each
+  // When > 5 plans: 2-3 plans get 1 side quest each
+  const numPlansWithSideQuests = finalPlans.length <= 5
     ? Math.min(Math.floor(Math.random() * 2) + 1, finalPlans.length) // 1-2 plans
     : Math.min(Math.floor(Math.random() * 2) + 2, finalPlans.length); // 2-3 plans
 
