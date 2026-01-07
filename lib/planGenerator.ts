@@ -710,15 +710,10 @@ function generateFullDayPlans(params: {
             { type: 'dining', place: dinner, duration: getDiningDuration(partySize) },
           ];
 
-          // Find side quests (1-2 per plan)
-          const sideQuests = findSideQuests(sideQuestPlaces, [breakfast, hangout1, lunch, hangout2, hangout3, dinner], usedSideQuestIds, 2);
-
-          // Don't require minimum side quests to ensure enough plans can be created
-
           const avgCost = Math.round(
             ((breakfast.priceLevel || 2) + (hangout1.priceLevel || 2) + (lunch.priceLevel || 2) + (hangout2.priceLevel || 2) + (hangout3.priceLevel || 2) + (dinner.priceLevel || 2)) / 6
           );
-          const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 100 + (sideQuests.length * 25);
+          const totalDuration = steps.reduce((sum, s) => sum + s.duration, 0) + 100;
 
           const plan: Plan = {
             id: `fullday-${planIndex}`,
@@ -730,7 +725,6 @@ function generateFullDayPlans(params: {
             vibe: getVibeFromHangout(hangout1.types?.[0] || 'park', hangoutType),
             distance: totalDistance,
             distanceCategory: categorizeDistance(totalDistance / 5),
-            sideQuests: sideQuests.length > 0 ? sideQuests : undefined,
           };
 
           candidatePlans.push(plan);
@@ -798,6 +792,31 @@ function generateFullDayPlans(params: {
       usedDiningIds.add(breakfastId);
       usedDiningIds.add(lunchId);
       usedDiningIds.add(dinnerId);
+    }
+  }
+
+  // Add side quests to only a subset of plans
+  // When less than 5 plans: 1-2 plans get 1 side quest each
+  // When 5+ plans: 2-3 plans get 1 side quest each
+  const numPlansWithSideQuests = finalPlans.length < 5
+    ? Math.min(Math.floor(Math.random() * 2) + 1, finalPlans.length) // 1-2 plans
+    : Math.min(Math.floor(Math.random() * 2) + 2, finalPlans.length); // 2-3 plans
+
+  // Randomly select which plans get side quests
+  const shuffledIndices = Array.from({ length: finalPlans.length }, (_, i) => i)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, numPlansWithSideQuests);
+
+  // Add 1 side quest to each selected plan
+  for (const planIndex of shuffledIndices) {
+    const plan = finalPlans[planIndex];
+    const mainPlaces = plan.steps.map(step => step.place);
+    const sideQuests = findSideQuests(sideQuestPlaces, mainPlaces, usedSideQuestIds, 1); // Max 1 side quest per plan
+
+    if (sideQuests.length > 0) {
+      plan.sideQuests = sideQuests;
+      // Update total duration to include the side quest
+      plan.totalDuration = plan.totalDuration + (sideQuests.length * 25);
     }
   }
 
