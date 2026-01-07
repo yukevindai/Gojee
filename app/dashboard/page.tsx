@@ -945,7 +945,7 @@ function DashboardContent() {
               />
               <FilterDropdown
                 label="# of Plans"
-                options={['3', '5', '7', '10']}
+                options={['2', '3', '4', '5', '6', '7', '8', '9', '10']}
                 value={numberOfPlans}
                 onChange={(val) => setNumberOfPlans(val as string)}
                 icon={<Layers className="h-4 w-4" />}
