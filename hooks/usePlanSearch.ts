@@ -6,6 +6,7 @@ import { getPlaceType } from '@/lib/places';
 import { generatePlans, generateDiningOnlyPlans, generateActivityOnlyPlans, getHangoutPlaceTypes, planFitsTimeWindow, type Plan } from '@/lib/planGenerator';
 import { getCuisineKeywords } from '@/lib/cuisines';
 import { getWeatherPreferences, isIndoorVenue, isOutdoorVenue } from '@/lib/weather';
+import { getWeatherData } from '@/lib/weatherApi';
 
 function mapPlaceResults(results: google.maps.places.PlaceResult[]): Place[] {
   return results.map((result) => ({
@@ -59,8 +60,12 @@ export function usePlanSearch() {
   ): Promise<Plan[]> => {
     const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines, priceRange, sideQuestBudget, includeDining = true, includeActivities = true } = filters;
 
+    // Fetch real-time weather data for the location
+    const weatherData = await getWeatherData(location.lat, location.lng);
+
     // Get weather preferences for seasonal and temperature-based adjustments
-    const weather = getWeatherPreferences();
+    // Use actual temperature if weather data is available
+    const weather = getWeatherPreferences(weatherData?.temperatureF);
 
     // Get cuisine keywords for search
     const cuisineKeywords = cuisines && cuisines.length > 0 ? getCuisineKeywords(cuisines) : '';
@@ -416,6 +421,7 @@ export function usePlanSearch() {
         startTime: filters.startTime,
         endTime: filters.endTime,
         weather, // Pass weather preferences for distance and side quest adjustments
+        weatherData, // Pass actual weather data for snow detection
       } as any); // Cast for compatibility with old interface
     }
   };

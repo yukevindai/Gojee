@@ -1,5 +1,6 @@
 import type { Place } from './places';
 import type { WeatherPreferences } from './weather';
+import type { WeatherData } from './weatherApi';
 import { getWinterSideQuests, getSnowSideQuests, hasSnowOnGround } from './weather';
 
 export interface ActivityStep {
@@ -34,6 +35,7 @@ export interface GeneratePlansOptions {
   startTime?: string; // Optional start time (e.g., "9 AM")
   endTime?: string; // Optional end time (e.g., "5 PM")
   weather?: WeatherPreferences; // Weather-based preferences for distance and activity adjustments
+  weatherData?: WeatherData | null; // Actual weather data for snow detection
 }
 
 function calculateDistance(place1: Place, place2: Place): number {
@@ -172,7 +174,7 @@ function getVibeFromHangout(hangoutType: string, formality: string): string {
 }
 
 export function generatePlans(options: GeneratePlansOptions): Plan[] {
-  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5, startTime, endTime, weather } = options;
+  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], planType, numberOfPlans = 5, startTime, endTime, weather, weatherData } = options;
 
   // For backward compatibility, if old parameters are passed
   const diningPlaces = (options as any).diningPlaces || [];
@@ -182,24 +184,24 @@ export function generatePlans(options: GeneratePlansOptions): Plan[] {
 
   // If using old interface (single dining type)
   if (diningPlaces.length > 0 && planType === 'single') {
-    plans = generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans, weather });
+    plans = generateSinglePlans({ diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces: coffeeShops, numberOfPlans, weather, weatherData });
   } else {
     // Generate plans based on plan type
     switch (planType) {
       case 'morning':
-        plans = generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
+        plans = generateMorningPlans({ breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData });
         break;
       case 'afternoon':
-        plans = generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
+        plans = generateAfternoonPlans({ lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData });
         break;
       case 'fullday':
-        plans = generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
+        plans = generateFullDayPlans({ breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData });
         break;
       case 'single':
       default:
         // Use first available dining category
         const singleDining = dinnerPlaces.length > 0 ? dinnerPlaces : (lunchPlaces.length > 0 ? lunchPlaces : breakfastPlaces);
-        plans = generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather });
+        plans = generateSinglePlans({ diningPlaces: singleDining, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData });
         break;
     }
   }
@@ -220,8 +222,9 @@ function generateSinglePlans(params: {
   sideQuestPlaces: Place[];
   numberOfPlans: number;
   weather?: WeatherPreferences;
+  weatherData?: WeatherData | null;
 }): Plan[] {
-  const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
+  const { diningPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -343,7 +346,7 @@ function generateSinglePlans(params: {
       const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
 
       // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
-      const availableQuests = hasSnowOnGround()
+      const availableQuests = hasSnowOnGround(weatherData)
         ? [...winterQuests, ...snowQuests]
         : winterQuests;
 
@@ -389,8 +392,9 @@ function generateMorningPlans(params: {
   sideQuestPlaces: Place[];
   numberOfPlans: number;
   weather?: WeatherPreferences;
+  weatherData?: WeatherData | null;
 }): Plan[] {
-  const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
+  const { breakfastPlaces, lunchPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -522,7 +526,7 @@ function generateMorningPlans(params: {
       const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
 
       // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
-      const availableQuests = hasSnowOnGround()
+      const availableQuests = hasSnowOnGround(weatherData)
         ? [...winterQuests, ...snowQuests]
         : winterQuests;
 
@@ -568,8 +572,9 @@ function generateAfternoonPlans(params: {
   sideQuestPlaces: Place[];
   numberOfPlans: number;
   weather?: WeatherPreferences;
+  weatherData?: WeatherData | null;
 }): Plan[] {
-  const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
+  const { lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -708,7 +713,7 @@ function generateAfternoonPlans(params: {
       const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
 
       // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
-      const availableQuests = hasSnowOnGround()
+      const availableQuests = hasSnowOnGround(weatherData)
         ? [...winterQuests, ...snowQuests]
         : winterQuests;
 
@@ -755,8 +760,9 @@ function generateFullDayPlans(params: {
   sideQuestPlaces: Place[];
   numberOfPlans: number;
   weather?: WeatherPreferences;
+  weatherData?: WeatherData | null;
 }): Plan[] {
-  const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather } = params;
+  const { breakfastPlaces, lunchPlaces, dinnerPlaces, hangoutPlaces, hangoutType, partySize, sideQuestPlaces, numberOfPlans, weather, weatherData } = params;
   const candidatePlans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -959,7 +965,7 @@ function generateFullDayPlans(params: {
       const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
 
       // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
-      const availableQuests = hasSnowOnGround()
+      const availableQuests = hasSnowOnGround(weatherData)
         ? [...winterQuests, ...snowQuests]
         : winterQuests;
 
