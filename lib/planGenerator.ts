@@ -1,6 +1,6 @@
 import type { Place } from './places';
 import type { WeatherPreferences } from './weather';
-import { getWinterSideQuests } from './weather';
+import { getWinterSideQuests, getSnowSideQuests, hasSnowOnGround } from './weather';
 
 export interface ActivityStep {
   type: 'dining' | 'hangout';
@@ -336,10 +336,18 @@ function generateSinglePlans(params: {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
 
-    // In winter, randomly add winter-specific side quests (like building a snowman)
+    // In winter, randomly add winter-specific side quests
+    // Snow activities only if it snowed today or yesterday
     if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
-      const winterQuests = getWinterSideQuests();
-      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+      const winterQuests = getWinterSideQuests(); // Non-snow winter activities (hot chocolate, holiday lights)
+      const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
+
+      // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
+      const availableQuests = hasSnowOnGround()
+        ? [...winterQuests, ...snowQuests]
+        : winterQuests;
+
+      const randomWinterQuest = availableQuests[Math.floor(Math.random() * availableQuests.length)];
 
       // Create a virtual "place" for the winter side quest
       const winterQuestPlace: Place = {
@@ -507,10 +515,18 @@ function generateMorningPlans(params: {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
 
-    // In winter, randomly add winter-specific side quests (like building a snowman)
+    // In winter, randomly add winter-specific side quests
+    // Snow activities only if it snowed today or yesterday
     if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
-      const winterQuests = getWinterSideQuests();
-      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+      const winterQuests = getWinterSideQuests(); // Non-snow winter activities (hot chocolate, holiday lights)
+      const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
+
+      // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
+      const availableQuests = hasSnowOnGround()
+        ? [...winterQuests, ...snowQuests]
+        : winterQuests;
+
+      const randomWinterQuest = availableQuests[Math.floor(Math.random() * availableQuests.length)];
 
       // Create a virtual "place" for the winter side quest
       const winterQuestPlace: Place = {
@@ -685,10 +701,18 @@ function generateAfternoonPlans(params: {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
 
-    // In winter, randomly add winter-specific side quests (like building a snowman)
+    // In winter, randomly add winter-specific side quests
+    // Snow activities only if it snowed today or yesterday
     if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
-      const winterQuests = getWinterSideQuests();
-      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+      const winterQuests = getWinterSideQuests(); // Non-snow winter activities (hot chocolate, holiday lights)
+      const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
+
+      // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
+      const availableQuests = hasSnowOnGround()
+        ? [...winterQuests, ...snowQuests]
+        : winterQuests;
+
+      const randomWinterQuest = availableQuests[Math.floor(Math.random() * availableQuests.length)];
 
       // Create a virtual "place" for the winter side quest
       const winterQuestPlace: Place = {
@@ -928,10 +952,18 @@ function generateFullDayPlans(params: {
     const plan = finalPlans[planIndex];
     const mainPlaces = plan.steps.map(step => step.place);
 
-    // In winter, randomly add winter-specific side quests (like building a snowman)
+    // In winter, randomly add winter-specific side quests
+    // Snow activities only if it snowed today or yesterday
     if (weather?.season === 'winter' && Math.random() < 0.3) { // 30% chance for winter side quest
-      const winterQuests = getWinterSideQuests();
-      const randomWinterQuest = winterQuests[Math.floor(Math.random() * winterQuests.length)];
+      const winterQuests = getWinterSideQuests(); // Non-snow winter activities (hot chocolate, holiday lights)
+      const snowQuests = getSnowSideQuests(); // Snow-requiring activities (snowman, snow angels)
+
+      // Combine snow and winter quests if there's snow on the ground, otherwise just winter quests
+      const availableQuests = hasSnowOnGround()
+        ? [...winterQuests, ...snowQuests]
+        : winterQuests;
+
+      const randomWinterQuest = availableQuests[Math.floor(Math.random() * availableQuests.length)];
 
       // Create a virtual "place" for the winter side quest
       const winterQuestPlace: Place = {

@@ -82,20 +82,10 @@ export function getWeatherPreferences(actualTempF?: number): WeatherPreferences 
 }
 
 /**
- * Get winter-specific side quest suggestions
+ * Get winter-specific side quest suggestions that don't require snow
  */
 export function getWinterSideQuests(): Array<{ name: string; description: string; duration: number }> {
   return [
-    {
-      name: 'Build a Snowman',
-      description: 'Find a snowy spot and build a snowman together',
-      duration: 30,
-    },
-    {
-      name: 'Snow Angels',
-      description: 'Make snow angels in fresh powder',
-      duration: 15,
-    },
     {
       name: 'Hot Chocolate Stop',
       description: 'Warm up with hot chocolate at a cozy spot',
@@ -107,6 +97,35 @@ export function getWinterSideQuests(): Array<{ name: string; description: string
       duration: 25,
     },
   ];
+}
+
+/**
+ * Get snow-specific side quest suggestions
+ * Only use when there's confirmed snow on the ground
+ */
+export function getSnowSideQuests(): Array<{ name: string; description: string; duration: number }> {
+  return [
+    {
+      name: 'Build a Snowman',
+      description: 'Find a snowy spot and build a snowman together',
+      duration: 30,
+    },
+    {
+      name: 'Snow Angels',
+      description: 'Make snow angels in fresh powder',
+      duration: 15,
+    },
+  ];
+}
+
+/**
+ * Check if there's snow on the ground based on weather data
+ * TODO: Integrate with weather API to check if it snowed today or yesterday
+ * For now, returns false until weather API is integrated
+ */
+export function hasSnowOnGround(weatherData?: { snowedToday?: boolean; snowedYesterday?: boolean }): boolean {
+  if (!weatherData) return false;
+  return weatherData.snowedToday === true || weatherData.snowedYesterday === true;
 }
 
 /**
