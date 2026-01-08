@@ -899,9 +899,9 @@ function DashboardContent() {
       {/* Top Filters Overlay */}
       <div className="absolute left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/95 via-white/80 to-transparent p-4 pb-8 backdrop-blur-sm pointer-events-none">
         <div className="mx-auto max-w-7xl pointer-events-auto">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start justify-between gap-8">
             {/* Filters */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 flex-1 mr-4">
               <FilterDropdown
                 label="Party Size"
                 options={['1', '2', '3', '4', '5', '6', '7', '8', '9+']}
