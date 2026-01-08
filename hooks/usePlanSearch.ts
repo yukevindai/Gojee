@@ -5,6 +5,7 @@ import type { Place, SearchFilters } from '@/lib/places';
 import { getPlaceType } from '@/lib/places';
 import { generatePlans, generateDiningOnlyPlans, generateActivityOnlyPlans, getHangoutPlaceTypes, planFitsTimeWindow, type Plan } from '@/lib/planGenerator';
 import { getCuisineKeywords } from '@/lib/cuisines';
+import { getWeatherPreferences, isIndoorVenue, isOutdoorVenue } from '@/lib/weather';
 
 function mapPlaceResults(results: google.maps.places.PlaceResult[]): Place[] {
   return results.map((result) => ({
@@ -57,6 +58,9 @@ export function usePlanSearch() {
     radius: number
   ): Promise<Plan[]> => {
     const { location, dining, hangout, partySize, planType: explicitPlanType, cuisines, priceRange, sideQuestBudget, includeDining = true, includeActivities = true } = filters;
+
+    // Get weather preferences for seasonal and temperature-based adjustments
+    const weather = getWeatherPreferences();
 
     // Get cuisine keywords for search
     const cuisineKeywords = cuisines && cuisines.length > 0 ? getCuisineKeywords(cuisines) : '';
@@ -196,24 +200,31 @@ export function usePlanSearch() {
     let hangoutPlaces: Place[] = [];
 
     if (includeActivities) {
-      // Make multiple targeted searches to get maximum diversity
+      // Build activity searches based on weather
       const activitySearches = [
-        { keyword: 'museum art gallery cultural center science center', type: 'museum' },
-        { keyword: 'park national park botanical garden nature reserve', type: 'park' },
-        { keyword: 'beach waterfront pier ocean seaside', type: null },
-        { keyword: 'landmark monument historical site tourist attraction', type: 'tourist_attraction' },
-        { keyword: 'shopping mall store boutique market', type: 'shopping_mall' },
-        { keyword: 'gym fitness spa wellness yoga', type: 'gym' },
-        { keyword: 'theater cinema movie arcade bowling entertainment', type: 'movie_theater' },
-        { keyword: 'stadium arena sports venue casino', type: null },
-        { keyword: 'zoo aquarium amusement park', type: null },
-        { keyword: 'library bookstore performing arts center', type: null },
-        { keyword: 'church cathedral temple mosque synagogue religious shrine', type: 'church' },
-        { keyword: 'historic landmark heritage site historical building', type: null },
-        { keyword: 'national park state park recreation area nature preserve', type: null },
-        { keyword: 'viewpoint observation deck scenic overlook vista point', type: null },
-        { keyword: 'aquarium marine center oceanarium sea life center', type: 'aquarium' },
-        { keyword: 'architectural landmark historic building monument', type: null },
+        // Indoor activities (always included, prioritized in hot weather)
+        { keyword: 'museum art gallery cultural center science center', type: 'museum', priority: weather.favorIndoor ? 1 : 2 },
+        { keyword: 'shopping mall store boutique market', type: 'shopping_mall', priority: weather.favorIndoor ? 1 : 2 },
+        { keyword: 'theater cinema movie arcade bowling entertainment', type: 'movie_theater', priority: weather.favorIndoor ? 1 : 2 },
+        { keyword: 'aquarium marine center oceanarium sea life center', type: 'aquarium', priority: weather.favorIndoor ? 1 : 2 },
+        { keyword: 'library bookstore performing arts center', type: null, priority: weather.favorIndoor ? 1 : 2 },
+        { keyword: 'gym fitness spa wellness yoga', type: 'gym', priority: weather.favorIndoor ? 1 : 2 },
+
+        // Outdoor activities - parks (prioritized in fall/winter)
+        { keyword: 'park national park botanical garden nature reserve', type: 'park', priority: weather.favorParks ? 1 : 2 },
+        { keyword: 'national park state park recreation area nature preserve', type: null, priority: weather.favorParks ? 1 : 2 },
+
+        // Outdoor activities - beaches (prioritized in spring/summer)
+        { keyword: 'beach waterfront pier ocean seaside', type: null, priority: weather.favorBeaches ? 1 : 3 },
+
+        // Mixed indoor/outdoor activities
+        { keyword: 'landmark monument historical site tourist attraction', type: 'tourist_attraction', priority: 2 },
+        { keyword: 'zoo aquarium amusement park', type: null, priority: weather.favorIndoor ? 3 : 2 },
+        { keyword: 'stadium arena sports venue casino', type: null, priority: 2 },
+        { keyword: 'church cathedral temple mosque synagogue religious shrine', type: 'church', priority: 2 },
+        { keyword: 'historic landmark heritage site historical building', type: null, priority: 2 },
+        { keyword: 'viewpoint observation deck scenic overlook vista point', type: null, priority: weather.favorIndoor ? 3 : 2 },
+        { keyword: 'architectural landmark historic building monument', type: null, priority: 2 },
       ];
 
       const excludedTypes = ['lodging', 'hotel', 'bed_and_breakfast', 'hostel', 'motel', 'inn', 'resort'];
@@ -271,6 +282,18 @@ export function usePlanSearch() {
       });
 
       hangoutPlaces = Array.from(uniquePlacesMap.values());
+
+      // Sort venues based on weather preferences
+      // In hot weather, prioritize indoor venues; otherwise maintain variety
+      if (weather.favorIndoor) {
+        hangoutPlaces.sort((a, b) => {
+          const aIsIndoor = isIndoorVenue(a.types || []);
+          const bIsIndoor = isIndoorVenue(b.types || []);
+          if (aIsIndoor && !bIsIndoor) return -1; // Indoor venues first
+          if (!aIsIndoor && bIsIndoor) return 1;
+          return 0; // Maintain order for same type
+        });
+      }
     }
 
     // Search for side quest locations (coffee, arcades, gyms, etc.) for all plans
@@ -392,6 +415,7 @@ export function usePlanSearch() {
         numberOfPlans: filters.numberOfPlans || 5,
         startTime: filters.startTime,
         endTime: filters.endTime,
+        weather, // Pass weather preferences for distance and side quest adjustments
       } as any); // Cast for compatibility with old interface
     }
   };
