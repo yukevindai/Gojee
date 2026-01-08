@@ -1123,8 +1123,11 @@ export function generateDiningOnlyPlans(params: {
   partySize: string;
   sideQuestPlaces?: Place[];
   numberOfPlans: number;
+  hangoutType?: string;
+  weather?: WeatherPreferences;
+  weatherData?: WeatherData | null;
 }): Plan[] {
-  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], partySize, sideQuestPlaces = [], numberOfPlans } = params;
+  const { breakfastPlaces = [], lunchPlaces = [], dinnerPlaces = [], partySize, sideQuestPlaces = [], numberOfPlans, hangoutType = 'N/A', weather, weatherData } = params;
   const plans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 
@@ -1202,8 +1205,10 @@ export function generateActivityOnlyPlans(params: {
   partySize: string;
   sideQuestPlaces?: Place[];
   numberOfPlans: number;
+  weather?: WeatherPreferences;
+  weatherData?: WeatherData | null;
 }): Plan[] {
-  const { hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], numberOfPlans } = params;
+  const { hangoutPlaces, hangoutType, partySize, sideQuestPlaces = [], numberOfPlans, weather, weatherData } = params;
   const plans: Plan[] = [];
   const usedSideQuestIds = new Set<string>();
 

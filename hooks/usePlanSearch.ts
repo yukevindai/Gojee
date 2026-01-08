@@ -384,6 +384,8 @@ export function usePlanSearch() {
         partySize,
         sideQuestPlaces: coffeeShops,
         numberOfPlans: filters.numberOfPlans || 5,
+        weather,
+        weatherData,
       });
       // Filter by time if specified
       if (filters.startTime || filters.endTime) {
@@ -399,6 +401,9 @@ export function usePlanSearch() {
         partySize,
         sideQuestPlaces: coffeeShops,
         numberOfPlans: filters.numberOfPlans || 5,
+        hangoutType: filters.hangout,
+        weather,
+        weatherData,
       });
       // Filter by time if specified
       if (filters.startTime || filters.endTime) {
