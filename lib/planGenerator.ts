@@ -2,6 +2,7 @@ import type { Place } from './places';
 import type { WeatherPreferences } from './weather';
 import type { WeatherData } from './weatherApi';
 import { getWinterSideQuests, getSnowSideQuests, hasSnowOnGround } from './weather';
+import { generateCreativePlanName } from './planNaming';
 
 export interface ActivityStep {
   type: 'dining' | 'hangout';
@@ -257,7 +258,18 @@ function generateSinglePlans(params: {
       const planId = `${dining.id}-${hangout.id}`;
       const plan: Plan = {
         id: planId,
-        name: getPlanName(dining, hangout, planIndex),
+        name: generateCreativePlanName({
+          planType: 'date',
+          vibe: hangoutType.toLowerCase() as 'formal' | 'chill' | 'fun' | 'romantic',
+          weather: weather ? {
+            season: weather.season,
+            temperature: weather.temperature,
+            favorIndoor: weather.favorIndoor,
+          } : undefined,
+          hasDining: true,
+          hasActivities: true,
+          index: planIndex,
+        }),
         description: getPlanDescription(dining, hangout, vibe),
         steps: [
           { type: 'dining', place: dining, duration: diningDuration },
@@ -434,7 +446,17 @@ function generateMorningPlans(params: {
 
         const plan: Plan = {
           id: `morning-${planIndex}`,
-          name: `Morning: ${breakfast.name.split(' ')[0]} → ${hangout.name.split(' ')[0]}`,
+          name: generateCreativePlanName({
+            planType: 'morning',
+            weather: weather ? {
+              season: weather.season,
+              temperature: weather.temperature,
+              favorIndoor: weather.favorIndoor,
+            } : undefined,
+            hasDining: true,
+            hasActivities: true,
+            index: planIndex,
+          }),
           description: `Start with breakfast at ${breakfast.name}, enjoy ${hangout.name}, then lunch at ${lunch.name}.`,
           steps,
           totalDuration,
@@ -618,7 +640,17 @@ function generateAfternoonPlans(params: {
 
         const plan: Plan = {
           id: `afternoon-${planIndex}`,
-          name: `Afternoon: ${lunch.name.split(' ')[0]} → ${hangout1.name.split(' ')[0]}`,
+          name: generateCreativePlanName({
+            planType: 'afternoon',
+            weather: weather ? {
+              season: weather.season,
+              temperature: weather.temperature,
+              favorIndoor: weather.favorIndoor,
+            } : undefined,
+            hasDining: true,
+            hasActivities: true,
+            index: planIndex,
+          }),
           description: `Lunch at ${lunch.name}, activities at ${hangout1.name} and ${hangout2.name}, then dinner at ${dinner.name}.`,
           steps,
           totalDuration,
@@ -863,7 +895,17 @@ function generateFullDayPlans(params: {
 
           const plan: Plan = {
             id: `fullday-${planIndex}`,
-            name: `Full Day: ${breakfast.name.split(' ')[0]} to ${dinner.name.split(' ')[0]}`,
+            name: generateCreativePlanName({
+              planType: 'fullday',
+              weather: weather ? {
+                season: weather.season,
+                temperature: weather.temperature,
+                favorIndoor: weather.favorIndoor,
+              } : undefined,
+              hasDining: true,
+              hasActivities: true,
+              index: planIndex,
+            }),
             description: `Complete day from breakfast at ${breakfast.name} to dinner at ${dinner.name} with multiple activities.`,
             steps,
             totalDuration,
@@ -1120,7 +1162,18 @@ export function generateDiningOnlyPlans(params: {
 
       const plan: Plan = {
         id: `dining-${planIndex}`,
-        name: `Dining Tour: ${restaurant1.name.split(' ')[0]} & ${restaurant2.name.split(' ')[0]}`,
+        name: generateCreativePlanName({
+          planType: 'dining',
+          vibe: hangoutType.toLowerCase() as 'formal' | 'chill' | 'fun' | 'romantic',
+          weather: weather ? {
+            season: weather.season,
+            temperature: weather.temperature,
+            favorIndoor: weather.favorIndoor,
+          } : undefined,
+          hasDining: true,
+          hasActivities: false,
+          index: planIndex,
+        }),
         description: `Enjoy dining at ${restaurant1.name} and ${restaurant2.name}.`,
         steps,
         totalDuration,
@@ -1186,7 +1239,18 @@ export function generateActivityOnlyPlans(params: {
 
       const plan: Plan = {
         id: `activity-${planIndex}`,
-        name: `Activity Day: ${activity1.name.split(' ')[0]} & ${activity2.name.split(' ')[0]}`,
+        name: generateCreativePlanName({
+          planType: 'activity',
+          vibe: hangoutType.toLowerCase() as 'formal' | 'chill' | 'fun' | 'romantic',
+          weather: weather ? {
+            season: weather.season,
+            temperature: weather.temperature,
+            favorIndoor: weather.favorIndoor,
+          } : undefined,
+          hasDining: false,
+          hasActivities: true,
+          index: planIndex,
+        }),
         description: `Explore ${activity1.name} and ${activity2.name}.`,
         steps,
         totalDuration,
