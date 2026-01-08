@@ -122,7 +122,7 @@ export function getSnowSideQuests(): Array<{ name: string; description: string; 
  * Check if there's snow on the ground based on weather data
  * Uses real weather data from API if available
  */
-export function hasSnowOnGround(weatherData?: { snowedToday?: boolean; snowedYesterday?: boolean }): boolean {
+export function hasSnowOnGround(weatherData?: { snowedToday?: boolean; snowedYesterday?: boolean } | null): boolean {
   if (!weatherData) return false;
   return weatherData.snowedToday === true || weatherData.snowedYesterday === true;
 }
