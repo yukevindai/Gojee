@@ -18,7 +18,7 @@ GrassMaxxing started as a Next.js web prototype for automatic outing planning. T
 
 Development has moved to **Xcode as a native iOS project**. Building directly against the iOS environment gives faster iteration, real device testing, and access to native maps, location, and system integrations that the web version could only approximate. This repo remains public as an archive of the original web implementation and a reference for the planning logic behind the app.
 
-Issues and pull requests here are unlikely to be actioned. The code is left in a working state and is free to read, fork, and learn from under the Apache 2.0 license.
+Issues and pull requests here are unlikely to be actioned. The code is left in a working state and is free to read, fork, and learn from under the MIT license.
 
 ---
 
