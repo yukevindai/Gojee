@@ -12,7 +12,7 @@
 
 **This repository is complete and no longer under active development.**
 
-GrassMaxxing started as a Next.js web prototype for automatic outing planning. That prototype did its job — it proved out the plan-generation engine, the filter model, and the step-by-step execution flow. It has now shipped as a native iOS app:
+Gojee started as a Next.js web prototype for automatic outing planning. That prototype did its job — it proved out the plan-generation engine, the filter model, and the step-by-step execution flow. It has now shipped as a native iOS app:
 
 ### 👉 [**Gojee on the App Store**](https://apps.apple.com/us/app/gojee/id6760603768)
 
