@@ -1,4 +1,4 @@
-# GrassMaxxing
+# Gojee
 
 **Touching grass made simple** — tell it who you're with, what you want to eat, and how you want to hang out, and it builds you a full day out on the map.
 
