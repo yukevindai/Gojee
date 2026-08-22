@@ -184,7 +184,7 @@ This project is concluded and no longer accepting contributions. Forks are welco
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
+Licensed under MIT.
 
 ---
 
