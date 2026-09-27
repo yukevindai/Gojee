@@ -1,4 +1,18 @@
+<div align="center">
+
 # Gojee
+
+**Less planning. More going.**
+
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Web%20prototype%20concluded-64748b)
+
+[Project status](#-project-status-concluded) · [Features](#features) · [Local setup](#getting-started) · [App Store](https://apps.apple.com/us/app/gojee/id6760603768)
+
+</div>
+
+---
 
 **Touching grass made simple** — tell it who you're with, what you want to eat, and how you want to hang out, and it builds you a full day out on the map.
 
@@ -74,14 +88,14 @@ You pick a few filters. It searches real venues around you, assembles multiple c
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+ (required by the pinned Next.js 16 release)
 - A Google Maps API key with **Maps JavaScript API** and **Places API** enabled
 
 ### Installation
 
 ```bash
-git clone https://github.com/yukevindai/GrassMaxxing.git
-cd GrassMaxxing
+git clone https://github.com/yukevindai/Gojee.git
+cd Gojee
 npm install
 cp .env.example .env.local
 ```
@@ -109,7 +123,7 @@ No API key is needed for weather — both weather providers are public and unaut
 
 ```bash
 npm run dev     # start the dev server at http://localhost:3000
-npm run build   # production build (type-checks and lints)
+npm run build   # production build; run lint separately
 npm run start   # serve the production build
 npm run lint    # ESLint
 ```
@@ -117,7 +131,7 @@ npm run lint    # ESLint
 ## Project Structure
 
 ```
-GrassMaxxing/
+Gojee/
 ├── app/
 │   ├── page.tsx              # Landing page with animated phone mockup
 │   ├── dashboard/page.tsx    # Main map, filters, plan generation & execution
